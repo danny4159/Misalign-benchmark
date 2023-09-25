@@ -1,0 +1,17 @@
+defaults:
+  - model_checkpoint.yaml
+  - model_summary.yaml
+  - rich_progress_bar.yaml
+  - custom_image_logging.yaml # added for logging images
+  - _self_
+
+model_checkpoint:
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "epoch_{epoch:03d}"
+  monitor: "val/ssim_B" # modified to look for best ssim
+  mode: "max" # maximum
+  save_last: True
+  auto_insert_metric_name: True
+
+model_summary:
+  max_depth: 1

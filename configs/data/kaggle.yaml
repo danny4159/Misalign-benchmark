@@ -1,0 +1,14 @@
+_target_: misalign.data.Kaggle_datamodule.KaggleDataModule
+name: Kaggle
+data_dir: ${paths.root_dir}/data/masked_Kaggle
+misalign_x: 0
+misalign_y: 0
+degree: 0
+motion_prob: 0
+deform_prob: 0
+flip_prob: 0.5
+rot_prob: 0.5
+rand_crop: False
+batch_size: 1
+num_workers: 4
+pin_memory: False

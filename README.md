@@ -42,6 +42,10 @@ conda install mamba -n base -c conda-forge
 mamba env create -f environment.yaml
 ```
 
+## Dataset
+https://drive.google.com/drive/folders/1hOb0TQtz7k5AzzPWUUU-lRHTE9ZS_G2M?usp=sharing
+Download this preprocessed IXI dataset, and insert it into the 'data' folder.
+
 ## How to run
 
 Train model with default configuration

@@ -12,7 +12,6 @@ log = utils.get_pylogger(__name__)
 
 gray2rgb = lambda x : torch.cat((x, x, x), dim=1)
 class MunitModule(BaseModule):
-
     def __init__(
         self,
         netG_A: torch.nn.Module,
@@ -24,6 +23,7 @@ class MunitModule(BaseModule):
         **kwargs: Any
     ):
         super().__init__()
+
         # assign generator
         self.netG_A = netG_A
         self.netG_B = netG_B
@@ -32,12 +32,10 @@ class MunitModule(BaseModule):
         self.netD_B = netD_B
 
         # fix the noise used in sampling
-        valid_size = 1 # TODO: 수정 # int(hyperparameters['valid_size'])
-        self.style_dim = 8 # TODO: 수정 # hyperparameters['gen']['style_dim']
-        self.s_a = torch.randn(valid_size, self.style_dim, 1, 1).cuda(7) # TODO: 세팅한 cuda번호로 세팅되도록 코드변경
-        # print('self.s_a :',self.s_a)
-        # print(self.s_a.size())
-        self.s_b = torch.randn(valid_size, self.style_dim, 1, 1).cuda(7)
+        valid_size = 1 # TODO: hyperparameters['valid_size']
+        self.style_dim = 8 # TODO:  hyperparameters['gen']['style_dim']
+        self.s_a = torch.randn(valid_size, self.style_dim, 1, 1).cuda(params['devices'][0])
+        self.s_b = torch.randn(valid_size, self.style_dim, 1, 1).cuda(params['devices'][0])
 
         self.automatic_optimization = False # perform manual
         # this line allows to access init params with 'self.hparams' attribute
@@ -92,7 +90,7 @@ class MunitModule(BaseModule):
         loss_G_vgg_a = self.criterionPerceptual(x_ab, real_a)  
         loss_perceptual = (loss_G_vgg_a + loss_G_vgg_b) * lambda_perceptual
         
-        # contextual loss (extra) # TODO: 실효성 검증 필요.
+        # contextual loss (extra)
         loss_contextual_a = torch.mean(self.contextual_loss(x_ba, real_a))
         loss_contextual_b = torch.mean(self.contextual_loss(x_ab, real_b))
         loss_contextual = (loss_contextual_a + loss_contextual_b) * lambda_contextual
@@ -103,11 +101,6 @@ class MunitModule(BaseModule):
 
     def model_step_munit(self, batch: Any):
         real_a, real_b = batch
-        # print("model_step_munit 왔데이~~~~~~")
-        # print(batch)
-        # print(len(batch))
-        # print(real_a.size())
-
         s_a = torch.randn(real_a.size(0), self.style_dim, 1, 1).cuda()
         s_b = torch.randn(real_b.size(0), self.style_dim, 1, 1).cuda()
         # encode
@@ -139,13 +132,13 @@ class MunitModule(BaseModule):
             optimizer_G.zero_grad()
 
         with optimizer_D_A.toggle_model():        
-            loss_D_A = self.backward_D_A(real_a, x_ba) # TODO: 이것도 고려
+            loss_D_A = self.backward_D_A(real_a, x_ba) # 이것도 고려
             self.manual_backward(loss_D_A)
             optimizer_D_A.step()
             optimizer_D_A.zero_grad()
 
         with optimizer_D_B.toggle_model():
-            loss_D_B = self.backward_D_B(real_b, x_ab) # TODO: 이것도 고려
+            loss_D_B = self.backward_D_B(real_b, x_ab) # 이것도 고려
             self.manual_backward(loss_D_B)
             optimizer_D_B.step()
             optimizer_D_B.zero_grad()

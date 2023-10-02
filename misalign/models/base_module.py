@@ -53,24 +53,19 @@ class BaseModule(LightningModule):
 
     def model_step(self, batch: Any):
         real_a, real_b = batch
-        if self.netG_A._get_name() == 'G_Resnet': # TODO: model이 UNIT일때 실행되도록 바꾸기
+        if self.netG_A._get_name() == 'G_Resnet': # For UNIT
             hidden_a, _ = self.netG_A.encode(real_a)
             fake_b = self.netG_B.decode(hidden_a)
             hidden_b, _ = self.netG_B.encode(real_b)
             fake_a = self.netG_A.decode(hidden_b)
 
-        elif self.netG_A._get_name() == 'AdaINGen':
+        elif self.netG_A._get_name() == 'AdaINGen': # For MUNIT
             c_a, s_a_fake = self.netG_A.encode(real_a)
             c_b, s_b_fake = self.netG_B.encode(real_b)
-            fake_a = self.netG_A.decode(c_b, self.s_a) #TODO: adainGen 코드 문제있다. 천천히 점검하기
+            fake_a = self.netG_A.decode(c_b, self.s_a)
             fake_b = self.netG_B.decode(c_a, self.s_b)
         else:
             fake_b, fake_a = self.forward(real_a, real_b)
-
-        # print("real a:",real_a.size())
-        # print("real b:",real_b.size())
-        # print("fake a:",fake_a.size())
-        # print("fake b:",fake_b.size())
         return real_a, real_b, fake_a, fake_b
 
     def on_train_start(self):

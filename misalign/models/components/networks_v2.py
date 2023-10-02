@@ -884,18 +884,13 @@ class AdaINGen(nn.Module):
         i = 0
         for m in model.modules():
             if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
-                # print("assign_adain_param 왓떼이~~~~")
-                # print("m.num_features: ",m.num_features)
                 mean = adain_params[:, :m.num_features]
                 std = adain_params[:, m.num_features:2*m.num_features]
-                # print("mean size!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@", mean.size())
-                # print("std size!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@", std.size())
                 m.bias = mean.contiguous().view(-1)
                 m.weight = std.contiguous().view(-1)
                 if adain_params.size(1) > 2*m.num_features:
                     adain_params = adain_params[:, 2*m.num_features:]
                     i += 1
-        # print("끝났데이")
     def get_num_adain_params(self, model):
         # return the number of AdaIN parameters needed by the model
         num_adain_params = 0
@@ -1268,7 +1263,7 @@ class Conv2dBlock(nn.Module):
             self.norm = nn.InstanceNorm2d(norm_dim, track_running_stats=False)
         elif norm == "ln":
             self.norm = LayerNorm(norm_dim)
-        elif norm == 'adain': #TODO: 추가한 코드
+        elif norm == 'adain': # 추가한 코드
             self.norm = AdaptiveInstanceNorm2d(norm_dim)
         elif norm == "none":
             self.norm = None
@@ -1353,7 +1348,7 @@ class LinearBlock(nn.Module):
 ##################################################################################
 # Normalization layers
 ##################################################################################
-class AdaptiveInstanceNorm2d(nn.Module): #TODO: 추가한 코드
+class AdaptiveInstanceNorm2d(nn.Module): # 추가한 코드
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
         super(AdaptiveInstanceNorm2d, self).__init__()
         # print("ADAIN Norm 2D 클래스에 들어왔데이 ~~~ !!!!!!!!!!")

@@ -55,3 +55,4 @@ params: # Other params
   lambda_cycle: 1
   lambda_perceptual: 1
   lambda_contextual: 0.3
+  devices: ${trainer.devices}

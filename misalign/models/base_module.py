@@ -64,6 +64,13 @@ class BaseModule(LightningModule):
             c_b, s_b_fake = self.netG_B.encode(real_b)
             fake_a = self.netG_A.decode(c_b, self.s_a)
             fake_b = self.netG_B.decode(c_a, self.s_b)
+        
+        elif self.netG_A._get_name() == 'ADN': # For ADN
+            pred_ll, pred_lh = self.netG_A.forward1(real_a)
+            pred_hl, pred_hh = self.netG_A.forward2(real_a, real_b)
+            fake_a = pred_hl
+            fake_b = pred_lh
+
         else:
             fake_b, fake_a = self.forward(real_a, real_b)
         return real_a, real_b, fake_a, fake_b

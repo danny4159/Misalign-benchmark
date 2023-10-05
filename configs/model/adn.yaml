@@ -1,0 +1,56 @@
+_target_: misalign.models.adn_module.AdnModule
+
+name: adn
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+  betas: [0.5, 0.999]
+  weight_decay: 0.0001
+
+netG_A:
+  _target_: misalign.models.components.networks_v2.define_G
+  input_nc: 1
+  output_nc: 1
+  ngf: 64
+  netG: 'adn'
+  norm: 'instance'
+  init_type: 'normal'
+  fuse: true
+  shared_decoder: false
+
+netG_B: # 실제로 쓰진 않음. netG_A 1개만 사용. 
+  _target_: misalign.models.components.networks_v2.define_G
+  input_nc: 1
+  output_nc: 1
+  ngf: 64
+  netG: 'adn'
+  norm: 'instance'
+  init_type: 'normal'
+  fuse: true
+  shared_decoder: false
+
+netD_A:
+  _target_: misalign.models.components.networks_v2.define_D
+  input_nc: 1
+  ndf: 64
+  norm: 'instance'
+  n_layers_D: 2 # follow the original paper
+  init_type: 'normal'
+  
+netD_B:
+  _target_: misalign.models.components.networks_v2.define_D
+  input_nc: 1
+  ndf: 64
+  norm: 'instance'
+  n_layers_D: 2 # follow the original paper
+  init_type: 'normal'
+  
+params: # Other params
+  pool_size: 0
+  lambda_recon: 20
+  lambda_self_reduction: 20
+  lambda_art_consistency: 20
+  lambda_gen_high: 0
+  lambda_art_syn: 0

@@ -7,6 +7,7 @@ from torch.optim import lr_scheduler
 import numpy as np
 import random
 from torch.autograd import Variable
+from copy import deepcopy
 
 ###############################################################################
 # Helper Functions
@@ -284,6 +285,8 @@ def define_G(
     no_antialias_up=False,
     gpu_ids=[],
     opt=None,
+    fuse=True,
+    shared_decoder=False,
 ):
     """Create a generator
 
@@ -381,6 +384,19 @@ def define_G(
             activ="relu",
             pad_type="reflect",
             mlp_dim=256,
+        )
+    elif netG == "adn":
+        net = ADN(
+            input_nc,
+            ngf, # dim과 동일
+            num_down=2,
+            num_res=4,
+            num_sides="all",
+            norm="inst",
+            activ="relu",
+            up_norm="ln", # layer norm
+            fuse=fuse,
+            shared_decoder=shared_decoder,
         )
     else:
         raise NotImplementedError("Generator model name [%s] is not recognized" % netG)
@@ -802,7 +818,7 @@ class G_Resnet(nn.Module):
             n_downsample, n_res, input_nc, ngf, norm, nl_layer, pad_type=pad_type
         )
         if nz == 0:
-            self.dec = Decoder(
+            self.dec = AdainDecoder(
                 n_downsample,
                 n_res,
                 self.enc_content.output_dim,
@@ -855,7 +871,7 @@ class AdaINGen(nn.Module):
 
         # content encoder
         self.enc_content = ContentEncoder(n_downsample, n_res, input_nc, dim, 'inst', activ, pad_type=pad_type)
-        self.dec = Decoder(n_downsample, n_res, self.enc_content.output_dim, output_nc, norm='adain', activ=activ, pad_type=pad_type)
+        self.dec = AdainDecoder(n_downsample, n_res, self.enc_content.output_dim, output_nc, norm='adain', activ=activ, pad_type=pad_type)
 
         # MLP to generate AdaIN parameters
         self.mlp = MLP(style_dim, self.get_num_adain_params(self.dec), mlp_dim, 3, norm='none', activ=activ)
@@ -898,6 +914,63 @@ class AdaINGen(nn.Module):
             if m.__class__.__name__ == "AdaptiveInstanceNorm2d":
                 num_adain_params += 2*m.num_features
         return num_adain_params
+    
+    
+class ADN(nn.Module):
+    """
+    Image with artifact is denoted as low quality image
+    Image without artifact is denoted as high quality image
+    """
+
+    def __init__(
+            self, 
+            input_nc=1, 
+            ngf=64,
+            num_down=2, 
+            num_res=4, 
+            num_sides="all",
+            norm='instance',
+            activ='relu',
+            up_norm='ln', # layer norm 
+            fuse=True, 
+            shared_decoder=False):
+        
+        super(ADN, self).__init__()
+
+        self.n = num_down + num_res + 1 if num_sides == "all" else num_sides
+        self.encoder_low = ContentEncoder(num_down, num_res, input_nc, ngf, norm, activ)
+        self.encoder_high = ContentEncoder(num_down, num_res, input_nc, ngf, norm, activ)
+        self.encoder_art = ContentEncoder(num_down, num_res, input_nc, ngf, norm, activ, adn=True)
+        self.decoder = AdnDecoder(input_nc, ngf, num_down, num_res, self.n, norm, up_norm, fuse)
+        self.decoder_art = self.decoder if shared_decoder else deepcopy(self.decoder) #deepcopy는 decoder weight sharing을 안하겠다.
+
+    def forward1(self, x_low):
+        _, sides = self.encoder_art(x_low)  # encode artifact
+        self.saved = (x_low, sides)
+        code, _ = self.encoder_low(x_low)  # encode low quality image
+        y1 = self.decoder_art(code, sides[-self.n:]) # decode image with artifact (low quality)
+        y2 = self.decoder(code) # decode image without artifact (high quality)
+        return y1, y2
+
+    def forward2(self, x_low, x_high):
+        if hasattr(self, "saved") and self.saved[0] is x_low: sides = self.saved[1]
+        else: _, sides = self.encoder_art(x_low)  # encode artifact
+
+        code, _ = self.encoder_high(x_high) # encode high quality image
+        y1 = self.decoder_art(code, sides[-self.n:])  # decode image with artifact (low quality)
+        y2 = self.decoder(code) # decode without artifact (high quality)
+        return y1, y2
+
+    def forward_lh(self, x_low):
+        code, _ = self.encoder_low(x_low)  # encode low quality image
+        y = self.decoder(code)
+        return y
+
+    def forward_hl(self, x_low, x_high):
+        _, sides = self.encoder_art(x_low)  # encode artifact
+        code, _ = self.encoder_high(x_high) # encode high quality image
+        y = self.decoder_art(code, sides[-self.n:])  # decode image with artifact (low quality)
+        return y
 
 ##################################################################################
 # Encoder and Decoders
@@ -979,9 +1052,18 @@ class StyleEncoder(nn.Module):
 
 class ContentEncoder(nn.Module):
     def __init__(
-        self, n_downsample, n_res, input_dim, dim, norm, activ, pad_type="zero"
+        self, 
+        n_downsample, 
+        n_res, 
+        input_dim, 
+        dim, 
+        norm, 
+        activ, 
+        pad_type="zero",
+        adn=False,
     ):
         super(ContentEncoder, self).__init__()
+        self.adn = adn
         self.model = []
         self.model += [
             Conv2dBlock(
@@ -1004,13 +1086,26 @@ class ContentEncoder(nn.Module):
             ]
             dim *= 2
         # residual blocks
-        self.model += [
-            ResBlocks(n_res, dim, norm=norm, activation=activ, pad_type=pad_type)
-        ]
+        if self.adn:
+            for i in range(n_res):
+                self.model += [
+                    ResBlocks(1, dim, norm=norm, activation=activ, pad_type=pad_type)
+                ]
+        else:        
+            self.model += [
+                ResBlocks(n_res, dim, norm=norm, activation=activ, pad_type=pad_type)
+            ]
         self.model = nn.Sequential(*self.model)
         self.output_dim = dim
 
     def forward(self, x, nce_layers=[], encode_only=False):
+        if self.adn:
+            sides = []
+            for layer in self.model:
+                x = layer(x)
+                sides.append(x)
+            return x, sides[::-1]
+        
         if len(nce_layers) > 0:
             feat = x
             feats = []
@@ -1023,10 +1118,6 @@ class ContentEncoder(nn.Module):
             return feat, feats
         else:
             return self.model(x), None
-
-        for layer_id, layer in enumerate(self.model):
-            print(layer_id, layer)
-
 
 class Decoder_all(nn.Module):
     def __init__(
@@ -1090,8 +1181,7 @@ class Decoder_all(nn.Module):
                     output = block(output)
             return output
 
-
-class Decoder(nn.Module):
+class AdainDecoder(nn.Module):
     def __init__(
         self,
         n_upsample,
@@ -1103,12 +1193,8 @@ class Decoder(nn.Module):
         pad_type="zero",
         nz=0,
     ):
-        super(Decoder, self).__init__()
-        # print("DECODER 들어왔데이~~")
-        # print("n_upsample: ",n_upsample)
-        # print("n_res: ",n_res)
-        # print("dim: ",dim)
-        
+        super(AdainDecoder, self).__init__()
+
         self.model = []
         # AdaIN residual blocks
         self.model += [ResBlocks(n_res, dim, norm, activ, pad_type=pad_type, nz=nz)]
@@ -1152,7 +1238,59 @@ class Decoder(nn.Module):
             return self.model(cat_feature(x, y))
         else:
             return self.model(x)
+        
+class AdnDecoder(nn.Module):
+    def __init__(self, output_ch, base_ch, num_up, num_residual, num_sides, res_norm='instance', up_norm='ln', fuse=False):
+        super(AdnDecoder, self).__init__()
+        input_ch = base_ch * 2 ** num_up
+        input_chs = []
 
+        for i in range(num_residual):
+            setattr(self, "res{}".format(i),
+                ResBlock(input_ch, pad_type='reflect', norm=res_norm, activation='lrelu'))
+            input_chs.append(input_ch)
+
+        for i in range(num_up):
+            m = nn.Sequential(
+                nn.Upsample(scale_factor=2, mode="nearest"),
+                Conv2dBlock(
+                    input_dim=input_ch, output_dim=input_ch // 2, kernel_size=5,
+                    stride=1, padding=2, pad_type='reflect', norm=up_norm, activation='lrelu'))
+            setattr(self, "conv{}".format(i), m)
+            input_chs.append(input_ch)
+            input_ch //= 2
+
+        m = Conv2dBlock(
+            input_dim=base_ch, output_dim=output_ch, kernel_size=7,
+            stride=1, padding=3, pad_type='reflect', norm='none', activation='tanh')
+        setattr(self, "conv{}".format(num_up), m)
+        input_chs.append(base_ch)
+        
+        self.layers = [getattr(self, "res{}".format(i)) for i in range(num_residual)] + \
+            [getattr(self, "conv{}".format(i)) for i in range(num_up + 1)]
+
+        # If true, fuse (concat and conv) the side features with decoder features
+        # Otherwise, directly add artifact feature with decoder features
+        if fuse:
+            input_chs = input_chs[-num_sides:]
+            for i in range(num_sides):
+                setattr(self, "fuse{}".format(i),
+                    nn.Conv2d(input_chs[i] * 2, input_chs[i], 1))
+            self.fuse = lambda x, y, i: getattr(self, "fuse{}".format(i))(torch.cat((x, y), 1))
+        else:
+            self.fuse = lambda x, y, i: x + y
+
+    def forward(self, x, sides=[]):
+        m, n = len(self.layers), len(sides)
+        assert m >= n, "Invalid side inputs"
+
+        for i in range(m - n):
+            x = self.layers[i](x)
+
+        for i, j in enumerate(range(m - n, m)):
+            x = self.fuse(x, sides[i], i)
+            x = self.layers[j](x)
+        return x
 
 ##################################################################################
 # Sequential Models
@@ -1351,8 +1489,6 @@ class LinearBlock(nn.Module):
 class AdaptiveInstanceNorm2d(nn.Module): # 추가한 코드
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
         super(AdaptiveInstanceNorm2d, self).__init__()
-        # print("ADAIN Norm 2D 클래스에 들어왔데이 ~~~ !!!!!!!!!!")
-        # print("num_features: ", num_features)
         self.num_features = num_features
         self.eps = eps
         self.momentum = momentum

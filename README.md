@@ -92,3 +92,4 @@ python misalign/train_pgan.py data.misalign_x=4 task_name="PixelGAN" tags=["xy40
 ```
 2. IXI Dataset (Normal): http://brain-development.org/ixi-dataset
 3. BRATS dataset (Abnormalizty): https://sites.google.com/site/braintumorsegmentation/home/brats2015
+ 

@@ -77,7 +77,7 @@ def JHL_deformation(A:np.ndarray,
     indices_A = random.sample(range(num_samples), num_transform_samples)
     indices_B = random.sample(range(num_samples), num_transform_samples)
 
-    for index in indices_A:
+    for index in indices_A: # apply random slice not each patient
         A[:,index,:,:] = elastic_A[:,index,:,:]
 
     for index in indices_B:
@@ -472,5 +472,133 @@ class dataset_Kaggle(Dataset):
 
         if self.rand_crop:
             A, B = random_crop(A, B, (192,192))
+
+        return A, B
+    
+
+def download_process_SynthRAD_MR_CT_Pelvis(data_dir: str, # h5를 만들기위한 함수. nifti -> h5로 해야해.
+                         write_dir: str,
+                         misalign_x: float = 0.0,  # maximum misalignment in x direction (float)
+                         misalign_y: float = 0.0,  # maximum misalignment in y direction (float)
+                         degree: float = 0.0,      # maximum rotation in z direction (float)
+                         motion_prob: float = 0.0, # the probability of occurrence of motion.
+                         deform_prob: float = 0.0, # the probability of performing deformation.
+                         ret: bool = False
+                        ):
+    #TODO:
+    #1. nifti를 가져올거야 (data_dir + 1PC + mr.nii.gz등)
+    #2. dataset으로 근데 random crop 적용
+    #3. 그다음 h5로 저장
+    
+    
+    with h5py.File(data_dir, "r") as f: #TODO nifti로 가져오도록 코드 바꿔주기.
+        data_A = np.array(f["data_x"])
+        data_B = np.array(f["data_y"])
+
+    # create torch tensors
+    data_A = np.transpose(data_A, (2, 0, 1))
+    data_A = np.expand_dims(data_A, axis=0)
+    print('data_A shape: ', data_A.shape)
+
+    data_B = np.transpose(data_B, (2, 0, 1))
+    data_B = np.expand_dims(data_B, axis=0)
+    print('data_B shape: ', data_B.shape)
+
+    # ensure that data is in range [-1,1]
+    data_A, data_B = JHL_deformation(data_A.copy(), data_B.copy(), deform_prob)
+    data_A, data_B = JHL_motion_artifacts(data_A, data_B, motion_prob)
+
+    data_A = (data_A - 0.5) / 0.5
+    data_B = (data_B - 0.5) / 0.5
+
+    log.info(f"Preparing the misalignment from <{data_dir}>")
+
+    data_A, data_B = JHL_rotate_images(data_A, data_B, degree)
+
+    for sl in range(data_A.shape[1]):
+        A = torch.from_numpy(data_A[:, sl, :, :])
+        B = torch.from_numpy(data_B[:, sl, :, :])
+
+        A, B = translate_images(A, B, misalign_x, misalign_y)
+
+        if sl == 0:
+            final_data_A = A
+            final_data_B = B
+        else:
+            final_data_A = torch.cat((final_data_A, A), dim=0)
+            final_data_B = torch.cat((final_data_B, B), dim=0)
+
+    log.info(f"Saving the prepared dataset to <{write_dir}>")
+
+    with h5py.File(write_dir, "w") as hw:
+        hw.create_dataset("data_A", data=final_data_A.numpy())
+        hw.create_dataset("data_B", data=final_data_B.numpy())
+
+    if ret:
+        return final_data_A, final_data_B
+    else:
+        return
+
+
+class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = True, *args, **kwargs):
+        super().__init__()
+
+        # Each patient has a different number of slices        
+        self.patient_keys = []
+        with h5py.File(data_dir, 'r') as file:
+            self.patient_keys = list(file['MR'].keys())
+            self.slice_counts = [file['MR'][key].shape[-1] for key in self.patient_keys]
+            self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
+        
+        self.rand_crop = rand_crop
+        self.data_dir = data_dir
+        self.aug_func = Compose(
+            [
+                RandFlipd(keys=["A", "B"], prob=flip_prob, spatial_axis=[0, 1]),
+                RandRotate90d(keys=["A", "B"], prob=rot_prob, spatial_axes=[0, 1]),
+            ]
+        )
+
+    def __len__(self):
+        """Returns the number of samples in the dataset."""
+        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
+        return self.cumulative_slice_counts[-1]
+
+
+    def __getitem__(self, idx):
+        """Fetches a sample from the dataset given an index.
+
+        Args:
+            idx (int): The index for the sample to retrieve.
+
+        Returns:
+            Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
+        """
+        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
+        patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
+        slice_idx = idx - self.cumulative_slice_counts[patient_idx]
+        patient_key = self.patient_keys[patient_idx]
+
+        with h5py.File(self.data_dir, 'r') as file:
+            A = file['MR'][patient_key][..., slice_idx]
+            B = file['CT'][patient_key][..., slice_idx]
+
+        A = torch.from_numpy(A).unsqueeze(0).float()
+        B = torch.from_numpy(B).unsqueeze(0).float()
+
+        # Create a dictionary for the data
+        data_dict = {"A": A, "B": B}
+
+        # Apply the random flipping
+        data_dict = self.aug_func(data_dict)
+
+        A = data_dict["A"]
+        A = convert_to_tensor(A)
+        B = data_dict["B"]
+        B = convert_to_tensor(B)
+
+        if self.rand_crop:
+            A, B = random_crop(A, B, (320,192))
 
         return A, B

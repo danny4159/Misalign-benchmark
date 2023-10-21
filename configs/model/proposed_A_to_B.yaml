@@ -41,4 +41,5 @@ params: # Other params
   flag_meta_use_spatial: True # 혹시 시간 되면 True False 의 차이 
   meta_type: LRE # 고정
   flag_use_mask: False # use mask in meta loss # 혹시 시간 되면 True False 의 차이 
-  dir_meta_learning: ${paths.root_dir}/data/IXI/val/prepared_data_0.0_0.0_0.0_0.0_0.0.h5
+  # dir_meta_learning: ${paths.root_dir}/data/IXI/val/prepared_data_0.0_0.0_0.0_0.0_0.0.h5 #TODO: 수정
+  dir_meta_learning: ${paths.root_dir}/data/SynthRAD_MR_CT_Pelvis/val/prepared_data_0_0_0_0_0.h5 #TODO: 수정

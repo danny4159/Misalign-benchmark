@@ -1,0 +1,15 @@
+_target_: misalign.data.SynthRAD_MR_CT_Pelvis_datamodule.SynthRAD_MR_CT_Pelvis_DataModule
+name: SynthRAD_MR_CT_Pelvis
+data_dir: ${paths.root_dir}/data/SynthRAD_MR_CT_Pelvis
+misalign_x: 0
+misalign_y: 0
+degree: 0
+motion_prob: 0
+deform_prob: 0
+reverse: False # New
+flip_prob: 0.0
+rot_prob: 0.0
+rand_crop: True #False
+batch_size: 12 #1
+num_workers: 3
+pin_memory: False

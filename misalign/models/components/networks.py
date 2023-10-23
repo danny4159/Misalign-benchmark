@@ -6,6 +6,47 @@ from torch.autograd import Variable
 from torch.optim import lr_scheduler
 import random
 
+import torch.nn.init as init
+
+
+class meta_weight_net(nn.Module):
+    def __init__(self, input_nc=1, output_nc=1, ngf=100, padding_type="reflect"):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Conv2d(
+                in_channels=input_nc,
+                out_channels=ngf,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                padding_mode=padding_type,
+                bias=True,
+            ),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(
+                in_channels=ngf,
+                out_channels=output_nc,
+                kernel_size=1,  # corrected here
+                stride=1,
+                padding=0,
+                bias=True,
+            ),
+            nn.Sigmoid(),
+        )
+        self.apply(self.init_weights)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            init.xavier_uniform_(m.weight)
+            m.bias.data.fill_(0.01)
+        elif isinstance(m, nn.Conv2d):
+            init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                m.bias.data.fill_(0.01)
+
+    def forward(self, x):
+        return self.layers(x)
 
 class ImagePool:
     def __init__(self, pool_size):

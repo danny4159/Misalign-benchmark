@@ -381,22 +381,26 @@ class dataset_synthRAD_FLY(Dataset):
             Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
         """
         os.environ["HDF5_USE_FILE_LOCKING"] = "True"
+        patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
+        slice_idx = idx - self.cumulative_slice_counts[patient_idx]
+        patient_key = self.patient_keys[patient_idx]
+        
         with h5py.File(self.data_dir, "r") as hr:
-            A = hr["data_A"][idx]
+            A = hr["MR"][patient_key][..., slice_idx]
             if (
                 self.deform_prob > 0
                 and idx > 2
                 and idx < self.__len__() - 2
                 and np.random.rand() < self.deform_prob
             ):
-                idx_new = np.random.randint(idx + 1, idx + 2)
-                A = hr["data_A"][idx]
-                B = hr["data_B"][idx_new]
+                slice_idx_new = np.random.randint(slice_idx + 1, slice_idx + 2)
+                A = hr["MR"][patient_key][..., slice_idx]
+                B = hr["CT"][patient_key][..., slice_idx_new]
             else:
-                B = hr["data_B"][idx]
+                B = hr["CT"][patient_key][..., slice_idx]
 
             if self.return_msk:
-                M = hr["data_M"][idx]
+                M = hr["CT"][patient_key][..., slice_idx] #TODO: CT를 MASK로 바꿔야해 디버깅을 위한거임
                 M = torch.from_numpy(M[None])
 
             A = A.astype(np.float32)
@@ -437,9 +441,9 @@ class dataset_synthRAD_FLY(Dataset):
             else:
                 B = motion_artifact(B)  # B is the label
 
-        A, B = torch.clamp(A, min=-1, max=1), torch.clamp(
-            B, min=-1, max=1
-        )  # make sure -1, 1
+        # A, B = torch.clamp(A, min=-1, max=1), torch.clamp(
+        #     B, min=-1, max=1
+        # )  # make sure -1, 1
         
         if self.rand_crop:
             if self.return_msk:

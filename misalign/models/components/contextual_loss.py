@@ -7,11 +7,6 @@ import torch
 from collections import OrderedDict
 
 
-import sys
-
-sys.path.append("../")
-
-
 class ResNet_Model(nn.Module):
     def __init__(self, listen_list=["maxpool", "layer1", "layer2"]):
         super(ResNet_Model, self).__init__()
@@ -48,13 +43,6 @@ class ResNet_Model(nn.Module):
             if name in self.listen:
                 self.features[name] = x
         return self.features
-
-import monai
-from collections import OrderedDict
-from torchvision.models import vgg19, vgg16
-import torch.nn.functional as F
-import torch.nn as nn
-import torch
 import sys
 
 sys.path.append("../")
@@ -182,7 +170,6 @@ crop_quarter: boolean
 
 """
 
-
 class Contextual_Loss(nn.Module):
     def __init__(
         self,
@@ -198,7 +185,6 @@ class Contextual_Loss(nn.Module):
         weight_sp=0.1,
     ):
         super(Contextual_Loss, self).__init__()
-
         listen_list = []
         self.layers_weights = {}
         try:
@@ -210,7 +196,6 @@ class Contextual_Loss(nn.Module):
             self.vgg_pred = VGG_Model(listen_list=listen_list)
         else:
             self.vgg_pred = ResNet_Model(listen_list=listen_list)
-
         self.crop_quarter = crop_quarter
         self.distanceType = distance_type
         self.max_1d_size = max_1d_size
@@ -221,13 +206,6 @@ class Contextual_Loss(nn.Module):
         self.weight_sp = weight_sp
 
     def forward(self, images, gt):
-        N, C, H, W = images.shape
-        loss = torch.zeros(N,1,1,1).to(images.device)
-        for sl in range(N):
-            loss[sl] += self.forward_slice(images[sl:sl+1], gt[sl:sl+1])
-        return loss
-
-    def forward_slice(self, images, gt):
         if images.shape[1] == 1 and gt.shape[1] == 1:
             images = images.repeat(1, 3, 1, 1)
             gt = gt.repeat(1, 3, 1, 1)
@@ -243,7 +221,10 @@ class Contextual_Loss(nn.Module):
             vgg_gt = self.vgg_pred(gt)
         else:
             id_cuda = torch.cuda.current_device()
-            loss = torch.zeros(1).cuda(id_cuda)
+            if self.l1:
+                loss = torch.zeros(images.shape[0],1,1,1).cuda(id_cuda)
+            else:
+                loss = torch.zeros(1).cuda(id_cuda)
             vgg_images = self.vgg_pred(images)
             vgg_images = {k: v.clone().cuda(id_cuda) for k, v in vgg_images.items()}
             vgg_gt = self.vgg_pred(gt)
@@ -266,13 +247,13 @@ class Contextual_Loss(nn.Module):
                     vgg_gt[key], output_1d_size=self.max_1d_size
                 )
             if self.l1:
-                loss_t = F.l1_loss(vgg_images[key], vgg_gt[key])
-            else:
+                loss_t = torch.abs(vgg_images[key] - vgg_gt[key]).mean(dim=(1,2,3),keepdim=True) #F.l1_loss(vgg_images[key], vgg_gt[key])
+            else:    
                 if self.cobi:
                     loss_t = self.calculate_CoBi_Loss(vgg_images[key], vgg_gt[key])
                 else:
                     loss_t = self.calculate_CX_Loss(vgg_images[key], vgg_gt[key])
-            # print(loss_t)
+                # print(loss_t)
             loss += loss_t * self.layers_weights[key]
             # del vgg_images[key], vgg_gt[key]
         return loss
@@ -442,7 +423,7 @@ class Contextual_Loss(nn.Module):
         relative_dist = raw_distance / (div + epsilon)
         return relative_dist
 
-    def calculate_CoBi_Loss(self, I_features, T_features):
+    def calculate_CoBi_Loss(self, I_features, T_features, average_over_scales=True, weight=None):
         I_features = Contextual_Loss._move_to_current_device(I_features)
         T_features = Contextual_Loss._move_to_current_device(T_features)
 
@@ -544,19 +525,29 @@ class Contextual_Loss(nn.Module):
         contextual_sim_comb = (
             1 - self.weight_sp
         ) * contextual_sim + self.weight_sp * grid_contextual_sim
+        if average_over_scales:
+            max_gt_sim = torch.max(torch.max(contextual_sim_comb, dim=1)[0], dim=1)[0] # size check
+            del contextual_sim
+            del contextual_sim_comb
+            del grid_contextual_sim
 
-        max_gt_sim = torch.max(torch.max(contextual_sim_comb, dim=1)[0], dim=1)[0]
-        del contextual_sim
-        del contextual_sim_comb
-        del grid_contextual_sim
+            CS = torch.mean(max_gt_sim, dim=1)
 
-        CS = torch.mean(max_gt_sim, dim=1)
-        CX_loss = torch.mean(-torch.log(CS))
-        if torch.isnan(CX_loss):
-            raise ValueError("NaN in computing CX_loss")
-        return CX_loss
+            if weight is not None:
+                CX_loss = torch.sum(-weight * torch.log(CS))
+            else:
+                CX_loss = torch.mean(-torch.log(CS))
 
-    def calculate_CX_Loss(self, I_features, T_features):
+            if torch.isnan(CX_loss):
+                raise ValueError("NaN in computing CX_loss")
+            return CX_loss
+        else:
+            max_gt_sim = torch.max(torch.max(contextual_sim_comb, dim=1)[0], dim=1)[0] # size check
+            if torch.isnan(max_gt_sim).any():
+                raise ValueError("NaN in computing max_gt_sim")
+            return max_gt_sim
+
+    def calculate_CX_Loss(self, I_features, T_features, average_over_scales=True, weight=None):
         I_features = Contextual_Loss._move_to_current_device(I_features)
         T_features = Contextual_Loss._move_to_current_device(T_features)
 
@@ -608,14 +599,25 @@ class Contextual_Loss(nn.Module):
             print(contextual_sim)
             raise ValueError("NaN or Inf in contextual_sim")
         del exp_distance
-        max_gt_sim = torch.max(torch.max(contextual_sim, dim=1)[0], dim=1)[0]
-        del contextual_sim
-        CS = torch.mean(max_gt_sim, dim=1)
-        CX_loss = torch.mean(-torch.log(CS))
-        if torch.isnan(CX_loss):
-            raise ValueError("NaN in computing CX_loss")
-        return CX_loss
-
+        if average_over_scales:
+            max_gt_sim = torch.max(torch.max(contextual_sim, dim=1)[0], dim=1)[0]
+            del contextual_sim
+            CS = torch.mean(max_gt_sim, dim=1)
+            if weight is not None:
+                CX_loss = torch.sum(-weight * torch.log(CS))
+            else:
+                CX_loss = torch.mean(-torch.log(CS))
+            if torch.isnan(CX_loss):
+                raise ValueError("NaN in computing CX_loss")
+            return CX_loss
+        else:
+            max_gt_sim = torch.max(torch.max(contextual_sim, dim=1)[0], dim=1)[0]
+            del contextual_sim
+            if torch.isnan(max_gt_sim).any():
+                raise ValueError("NaN in computing max_gt_sim")
+            CS = torch.mean(max_gt_sim, dim=1)
+            CX_loss = -torch.log(CS) # batch * patch
+            return CX_loss
 
 def compute_meshgrid(shape):
     N, C, H, W = shape

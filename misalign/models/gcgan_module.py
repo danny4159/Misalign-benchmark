@@ -112,7 +112,9 @@ class GCCycleGANModule(BaseModule):
             self.manual_backward(loss_D_B)
             optimizer_D_B.step()
             optimizer_D_B.zero_grad()
-        self.log("G_loss", loss_G.detach(), prog_bar=True)
+            
+        self.loss_G = loss_G.detach() * 0.1 + self.loss_G * 0.9
+        self.log("G_loss", self.loss_G, prog_bar=True)
         
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

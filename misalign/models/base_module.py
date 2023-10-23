@@ -82,6 +82,7 @@ class BaseModule(LightningModule):
             metrics.reset()
         for metrics in self.test_metrics:
             metrics.reset()
+        return super().on_train_start()
 
     def backward_G(self, real_a, real_b, fake_a, fake_b, *args, **kwargs):
         pass
@@ -106,10 +107,14 @@ class BaseModule(LightningModule):
         return loss_D
 
     def training_step(self, batch: Any, batch_idx: int):
-        pass
+        return super().training_step(batch, batch_idx)
+
+    def on_train_epoch_start(self) -> None:
+        self.loss_G = 0
+        return super().on_train_epoch_start()
 
     def on_train_epoch_end(self):
-        pass
+        return super().on_train_epoch_end()
 
     def validation_step(self, batch: Any, batch_idx: int):
         real_A, real_B, fake_A, fake_B = self.model_step(batch)
@@ -123,7 +128,7 @@ class BaseModule(LightningModule):
         self.val_ssim_B(real_B, fake_B)
         self.val_lpips_B(gray2rgb(real_B), gray2rgb(fake_B))
 
-        self.log("val/loss", loss, prog_bar=True)
+        self.log("val/loss", loss.detach(), prog_bar=True)
 
     def on_validation_epoch_end(self):
 
@@ -131,17 +136,17 @@ class BaseModule(LightningModule):
         ssim = self.val_ssim_A.compute()
         lpips = self.val_lpips_A.compute()
 
-        self.log("val/psnr_A", psnr)
-        self.log("val/ssim_A", ssim)
-        self.log("val/lpips_A", lpips)
+        self.log("val/psnr_A", psnr.detach())
+        self.log("val/ssim_A", ssim.detach())
+        self.log("val/lpips_A", lpips.detach())
 
         psnr = self.val_psnr_B.compute()
         ssim = self.val_ssim_B.compute()
         lpips = self.val_lpips_B.compute()
 
-        self.log("val/psnr_B", psnr)
-        self.log("val/ssim_B", ssim)
-        self.log("val/lpips_B", lpips)
+        self.log("val/psnr_B", psnr.detach())
+        self.log("val/ssim_B", ssim.detach())
+        self.log("val/lpips_B", lpips.detach())
 
         for metrics in self.val_metrics:
             metrics.reset()
@@ -168,7 +173,7 @@ class BaseModule(LightningModule):
         self.stats_lpips_A.update(_lpips_A)
         self.stats_lpips_B.update(_lpips_B) 
 
-        self.log("test/loss", loss, prog_bar=True)
+        self.log("test/loss", loss.detach(), prog_bar=True)
 
     def on_test_epoch_end(self):
         psnr = self.stats_psnr_A.compute()

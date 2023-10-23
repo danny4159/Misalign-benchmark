@@ -85,18 +85,21 @@ class PixelGANModule(BaseModule):
         with optimizer_G.toggle_model():
             loss_G = self.backward_G(real_a, real_b, fake_a, fake_b, self.params.lambda_l1, self.params.lambda_vgg)
             self.manual_backward(loss_G)
+            self.clip_gradients(optimizer_G, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
             optimizer_G.step()
             optimizer_G.zero_grad()
 
         with optimizer_D_A.toggle_model():
             loss_D_A = self.backward_D_A(real_b, fake_b)
             self.manual_backward(loss_D_A)
+            self.clip_gradients(optimizer_D_A, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
             optimizer_D_A.step()
             optimizer_D_A.zero_grad()
 
         with optimizer_D_B.toggle_model():
             loss_D_B = self.backward_D_B(real_a, fake_a)
             self.manual_backward(loss_D_B)
+            self.clip_gradients(optimizer_D_B, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
             optimizer_D_B.step()
             optimizer_D_B.zero_grad()
         self.log("G_loss", loss_G.detach(), prog_bar=True)

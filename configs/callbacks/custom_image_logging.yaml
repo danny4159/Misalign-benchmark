@@ -2,13 +2,13 @@
 
 ImageLoggingCallback:
   _target_: misalign.callbacks.image_callback.ImageLoggingCallback
-  val_batch_idx: [20,22,62,65]
-  tst_batch_idx: [15,20,30,50,70]
-  center_crop: 220
-  every_epoch: 5 # log every 5 epochs
+  val_batch_idx: [20,30,35,40,44,65]
+  tst_batch_idx: [15,20,30,40,48,70]
+  center_crop: 192
+  every_epoch: 1 # log every 5 epochs
   log_test: True # log test images
 
 ImageSavingCallback:
   _target_: misalign.callbacks.image_callback.ImageSavingCallback
   center_crop: 256
-  subject_number_length: 3
+  subject_number_length: 5

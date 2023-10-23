@@ -265,6 +265,6 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/07_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정
+    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/07_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 IXI / SynthRAD_MR_CT_Pelvis
     _.prepare_data()
     _.setup()

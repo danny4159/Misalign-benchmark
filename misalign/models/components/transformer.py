@@ -805,5 +805,6 @@ def smoothing_loss(y_pred):
 
     dx = dx * dx
     dy = dy * dy
-    d = torch.mean(dx, dim=(1,2,3), keepdim=True) + torch.mean(dy, dim=(1,2,3), keepdim=True)
+    d = torch.mean(dx) + torch.mean(dy)
+    grad = d
     return d

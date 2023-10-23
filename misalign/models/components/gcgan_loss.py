@@ -366,6 +366,7 @@ class GradientCorrelation2d(GradientDifference2d):
                  gauss_truncate=4.0,
                  return_map=False,
                  reduction='mean',
+                 crop_quarters=False,
                  eps=1e-8):
 
         super().__init__(grad_method,
@@ -375,9 +376,24 @@ class GradientCorrelation2d(GradientDifference2d):
                         reduction)
 
         self.eps = eps
+        self.crop_quarters = crop_quarters
 
+    @staticmethod
+    def _crop_quarters(feature):
+        N, fC, fH, fW = feature.size()
+        quarters_list = []
+        quarters_list.append(feature[..., 0 : round(fH / 2), 0 : round(fW / 2)])
+        quarters_list.append(feature[..., 0 : round(fH / 2), round(fW / 2) :])
+        quarters_list.append(feature[..., round(fH / 2) :, 0 : round(fW / 2)])
+        quarters_list.append(feature[..., round(fH / 2) :, round(fW / 2) :])
+
+        feature_tensor = torch.cat(quarters_list, dim=0)
+        return feature_tensor
 
     def forward(self, x, y):
+        if self.crop_quarters:
+            x = self._crop_quarters(x)
+            y = self._crop_quarters(y)
 
         self._check_type_forward(x)
         self._check_type_forward(y)

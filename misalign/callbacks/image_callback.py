@@ -324,7 +324,7 @@ class ImageSavingCallback(Callback):
                 preds_a = CenterCrop(self.center_crop)(preds_a)
 
             # Change a,b,preds_a to numpy array
-            a, b, preds_a, _ = self.change_torch_numpy(a, b, preds_a, a*0)
+            a, b, preds_a = self.change_torch_numpy(a, b, preds_a)
 
             self.img_a.append(a)
             self.img_b.append(b)

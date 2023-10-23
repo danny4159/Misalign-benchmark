@@ -541,18 +541,18 @@ def download_process_SynthRAD_MR_CT_Pelvis(data_dir: str, # h5를 만들기위�
 
 
 class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
-    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = True, *args, **kwargs):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, *args, **kwargs):
         super().__init__()
-
+        self.rand_crop = rand_crop
+        self.data_dir = data_dir
+        
         # Each patient has a different number of slices        
         self.patient_keys = []
-        with h5py.File(data_dir, 'r') as file:
+        with h5py.File(self.data_dir, 'r') as file:
             self.patient_keys = list(file['MR'].keys())
             self.slice_counts = [file['MR'][key].shape[-1] for key in self.patient_keys]
             self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
         
-        self.rand_crop = rand_crop
-        self.data_dir = data_dir
         self.aug_func = Compose(
             [
                 RandFlipd(keys=["A", "B"], prob=flip_prob, spatial_axis=[0, 1]),
@@ -600,5 +600,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
 
         if self.rand_crop:
             A, B = random_crop(A, B, (320,192))
-
+        else:
+            _, h, w = A.shape
+            A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
+            
         return A, B

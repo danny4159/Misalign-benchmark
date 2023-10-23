@@ -313,3 +313,148 @@ class dataset_IXI_FLY(Dataset):
                 return A, B, M
             else:
                 return A, B
+
+class dataset_synthRAD_FLY(Dataset):
+    def __init__(
+        self,
+        data_dir: str,
+        rand_crop: bool = False,
+        misalign_x: float = 0.0,
+        misalign_y: float = 0.0,
+        degree: float = 0.0,
+        motion_prob: float = 0.0,
+        deform_prob: float = 0.0,
+        aug: bool = False,
+        reverse: bool = False,
+        return_msk: bool = False,
+        crop_size=256,
+    ):
+        super().__init__()
+        self.rand_crop = rand_crop
+        self.data_dir = data_dir
+        
+        # Each patient has a different number of slices        
+        self.patient_keys = []
+        with h5py.File(self.data_dir, 'r') as file:
+            self.patient_keys = list(file['MR'].keys())
+            self.slice_counts = [file['MR'][key].shape[-1] for key in self.patient_keys]
+            self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
+        
+        if return_msk:
+            self.aug_func = Compose(
+                [
+                    RandFlipd(keys=["A", "B", "M"], prob=0.5, spatial_axis=[0, 1]),
+                    RandRotate90d(keys=["A", "B", "M"], prob=0.5, spatial_axes=[0, 1]),
+                ]
+            )
+
+        else:
+            self.aug_func = Compose(
+                [
+                    RandFlipd(keys=["A", "B"], prob=0.5, spatial_axis=[0, 1]),
+                    RandRotate90d(keys=["A", "B"], prob=0.5, spatial_axes=[0, 1]),
+                ]
+            )
+
+        self.misalign_x = misalign_x
+        self.misalign_y = misalign_y
+        self.degree = degree
+        self.motion_prob = motion_prob
+        self.deform_prob = deform_prob
+        self.aug = aug
+        self.reverse = reverse
+        self.return_msk = return_msk
+        self.crop_size = crop_size
+
+    def __len__(self):
+        """Returns the number of samples in the dataset."""
+        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
+        return self.cumulative_slice_counts[-1]
+
+    def __getitem__(self, idx):
+        """Fetches a sample from the dataset given an index.
+
+        Args:
+            idx (int): The index for the sample to retrieve.
+
+        Returns:
+            Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
+        """
+        os.environ["HDF5_USE_FILE_LOCKING"] = "True"
+        with h5py.File(self.data_dir, "r") as hr:
+            A = hr["data_A"][idx]
+            if (
+                self.deform_prob > 0
+                and idx > 2
+                and idx < self.__len__() - 2
+                and np.random.rand() < self.deform_prob
+            ):
+                idx_new = np.random.randint(idx + 1, idx + 2)
+                A = hr["data_A"][idx]
+                B = hr["data_B"][idx_new]
+            else:
+                B = hr["data_B"][idx]
+
+            if self.return_msk:
+                M = hr["data_M"][idx]
+                M = torch.from_numpy(M[None])
+
+            A = A.astype(np.float32)
+            B = B.astype(np.float32)
+
+            A = torch.from_numpy(A[None])
+            B = torch.from_numpy(B[None])
+
+        # Create a dictionary for the data
+        if self.return_msk:
+            data_dict = {"A": A, "B": B, "M": M}
+        else:
+            data_dict = {"A": A, "B": B}
+
+        # Apply the random flipping
+        if self.aug:
+            data_dict = self.aug_func(data_dict)
+
+        A = data_dict["A"]
+        A = convert_to_tensor(A)
+        B = data_dict["B"]
+        B = convert_to_tensor(B)
+
+        if self.return_msk:
+            M = data_dict["M"]
+            M = convert_to_tensor(M)
+
+        # Perform misalignment (Rigid)
+        # First: translation
+        if self.misalign_x == 0 and self.misalign_y == 0 and self.degree == 0:
+            pass
+        else:
+            A, B = translate_images(A, B, self.misalign_x, self.misalign_y, self.degree)
+
+        if np.random.rand() < self.motion_prob:
+            if self.reverse:
+                A = motion_artifact(A)  # A is the label
+            else:
+                B = motion_artifact(B)  # B is the label
+
+        A, B = torch.clamp(A, min=-1, max=1), torch.clamp(
+            B, min=-1, max=1
+        )  # make sure -1, 1
+        
+        if self.rand_crop:
+            if self.return_msk:
+                A, B, M = random_crop2(A, B, M, (self.crop_size, self.crop_size))
+
+            else:
+                A, B = random_crop(A, B, (self.crop_size, self.crop_size))
+
+        if self.reverse:
+            if self.return_msk:
+                return B, A, M
+            else:
+                return B, A
+        else:
+            if self.return_msk:
+                return A, B, M
+            else:
+                return A, B

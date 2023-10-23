@@ -68,6 +68,9 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
+        
+        #TODO: 필요없으면 지우기 임시로 추가한것
+        # self.train_dir = "/SSD3_8TB/Daniel/07_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis/train/prepared_data_0_0_0_0_0_Norm.h5"
 
     @property
     def misalign(self):
@@ -262,6 +265,6 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/13_misalign_proposed_final/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정
+    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/07_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정
     _.prepare_data()
     _.setup()

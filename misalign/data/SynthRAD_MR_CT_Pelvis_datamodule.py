@@ -69,9 +69,6 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
         
-        #TODO: 필요없으면 지우기 임시로 추가한것
-        # self.train_dir = "/SSD3_8TB/Daniel/07_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis/train/prepared_data_0_0_0_0_0_Norm.h5"
-
     @property
     def misalign(self):
         return 'Misalignment x:{}, y:{}, R:{}, M:{}, D:{}'.format(self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob)
@@ -89,13 +86,13 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             
             if phase == 'train': # misalign only for training data
                 mis_x, mis_y, Rot_z, M_prob, D_prob = self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob
-                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # save to hdf5
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_MASK_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # save to hdf5
                 self.train_dir = write_dir
             
             elif phase == 'val' or 'test': # no misalignment for validation and test data
                 # mis_x, mis_y, Rot_z, M_prob, D_prob = 0.0, 0.0, 0.0, 0.0, 0.0
                 mis_x, mis_y, Rot_z, M_prob, D_prob = 0, 0, 0, 0, 0
-                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # save to hdf5  
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_MASK_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # save to hdf5  
                 if phase == 'val':
                     self.val_dir = write_dir
                 elif phase == 'test':
@@ -265,6 +262,6 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/07_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 IXI / SynthRAD_MR_CT_Pelvis
+    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/13_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 IXI / SynthRAD_MR_CT_Pelvis
     _.prepare_data()
     _.setup()

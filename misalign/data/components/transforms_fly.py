@@ -400,7 +400,7 @@ class dataset_synthRAD_FLY(Dataset):
                 B = hr["CT"][patient_key][..., slice_idx]
 
             if self.return_msk:
-                M = hr["CT"][patient_key][..., slice_idx] #TODO: CT를 MASK로 바꿔야해 디버깅을 위한거임
+                M = hr["MASK"][patient_key][..., slice_idx]
                 M = torch.from_numpy(M[None])
 
             A = A.astype(np.float32)

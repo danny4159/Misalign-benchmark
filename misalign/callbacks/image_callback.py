@@ -7,11 +7,12 @@ from lightning.pytorch import Callback
 from misalign import utils
 import numpy as np
 import nibabel as nib
+import h5py
+
 
 import os
 
 log = utils.get_pylogger(__name__)
-
 
 class ImageLoggingCallback(Callback):
     def __init__(
@@ -51,11 +52,11 @@ class ImageLoggingCallback(Callback):
                 a, b, preds_a, preds_b = res
                 self.ngrid = 4
                 # if size of a is bigger than centercrop, then center crop
-                if a.shape[-1] > self.center_crop:
-                    a = CenterCrop(self.center_crop)(a)
-                    b = CenterCrop(self.center_crop)(b)
-                    preds_a = CenterCrop(self.center_crop)(preds_a)
-                    preds_b = CenterCrop(self.center_crop)(preds_b)
+                # if a.shape[-1] > self.center_crop:
+                #     a = CenterCrop(self.center_crop)(a)
+                #     b = CenterCrop(self.center_crop)(b)
+                #     preds_a = CenterCrop(self.center_crop)(preds_a)
+                #     preds_b = CenterCrop(self.center_crop)(preds_b)
 
                 err_a = torch.abs(a - preds_a)
                 err_b = torch.abs(b - preds_b)
@@ -77,10 +78,10 @@ class ImageLoggingCallback(Callback):
                 self.ngrid = 3
                 # a, b, preds_a, preds_b = pl_module.model_step(batch)
 
-                if a.shape[-1] > self.center_crop:
-                    a = CenterCrop(self.center_crop)(a)
-                    b = CenterCrop(self.center_crop)(b)
-                    preds_b = CenterCrop(self.center_crop)(preds_b)
+                # if a.shape[-1] > self.center_crop:
+                #     a = CenterCrop(self.center_crop)(a)
+                #     b = CenterCrop(self.center_crop)(b)
+                #     preds_b = CenterCrop(self.center_crop)(preds_b)
 
                 err_b = torch.abs(b - preds_b)
 
@@ -129,11 +130,11 @@ class ImageLoggingCallback(Callback):
                 a, b, preds_a, preds_b = res
 
                 # if size of a is bigger than centercrop, then center crop
-                if a.shape[-1] > self.center_crop:
-                    a = CenterCrop(self.center_crop)(a)
-                    b = CenterCrop(self.center_crop)(b)
-                    preds_a = CenterCrop(self.center_crop)(preds_a)
-                    preds_b = CenterCrop(self.center_crop)(preds_b)
+                # if a.shape[-1] > self.center_crop:
+                #     a = CenterCrop(self.center_crop)(a)
+                #     b = CenterCrop(self.center_crop)(b)
+                #     preds_a = CenterCrop(self.center_crop)(preds_a)
+                #     preds_b = CenterCrop(self.center_crop)(preds_b)
 
                 # log.info(f'a shape: <{a.shape}>, b shape: <{b.shape}>, preds_a shape: <{preds_a.shape}>, preds_b shape: <{preds_b.shape}>')
 
@@ -148,10 +149,10 @@ class ImageLoggingCallback(Callback):
                 self.ngrid = 3
                 a, b, preds_b = res
 
-                if a.shape[-1] > self.center_crop:
-                    a = CenterCrop(self.center_crop)(a)
-                    b = CenterCrop(self.center_crop)(b)
-                    preds_b = CenterCrop(self.center_crop)(preds_b)
+                # if a.shape[-1] > self.center_crop:
+                #     a = CenterCrop(self.center_crop)(a)
+                #     b = CenterCrop(self.center_crop)(b)
+                #     preds_b = CenterCrop(self.center_crop)(preds_b)
 
                 self.img_grid = self.img_grid + [
                     (a[0] + 1) / 2,
@@ -258,8 +259,30 @@ class ImageSavingCallback(Callback):
         self.img_b = []
         self.img_preds_a = []
         self.img_preds_b = []
-
+        self.i = 0
+        self.subject_slice_num = []
         self.subject_number = 1
+
+        ################################################################
+        # synthRAD위해 추가한 코드!
+        head, _ = os.path.split(trainer.default_root_dir)
+        while head:
+            # 분할된 경로의 마지막 부분을 확인합니다.
+            tail = os.path.basename(head)
+            if tail == "logs":
+                # "logs"를 찾았을 경우 그 전까지의 경로를 반환합니다.
+                code_root_dir = os.path.dirname(head)
+                break
+            head, _= os.path.split(head)
+        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'prepared_data_0_0_0_0_0_MASK_Norm.h5')
+        # h5 파일에서 MR 그룹의 모든 데이터셋을 리스트로 불러오기
+        with h5py.File(data_path, 'r') as file:
+            mr_group = file['MR']
+            dataset_list = [mr_group[key][()] for key in mr_group.keys()]
+        # dataset_list의 각 데이터셋에서 3번째 channel을 self.img_a에 추가
+        for dataset in dataset_list:
+            self.subject_slice_num.append(dataset.shape[2])  # 3번째 channel
+
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
 
@@ -267,12 +290,12 @@ class ImageSavingCallback(Callback):
         if len(res) == 4:
             a, b, preds_a, preds_b = res
 
-            # if size of a is bigger than centercrop, then center crop
-            if a.shape[-1] > self.center_crop:
-                a = CenterCrop(self.center_crop)(a)
-                b = CenterCrop(self.center_crop)(b)
-                preds_a = CenterCrop(self.center_crop)(preds_a)
-                preds_b = CenterCrop(self.center_crop)(preds_b)
+            # # if size of a is bigger than centercrop, then center crop
+            # if a.shape[-1] > self.center_crop:
+            #     a = CenterCrop(self.center_crop)(a)
+            #     b = CenterCrop(self.center_crop)(b)
+            #     preds_a = CenterCrop(self.center_crop)(preds_a)
+            #     preds_b = CenterCrop(self.center_crop)(preds_b)
 
             # Change a,b,preds_a,preds_b to numpy array
             a, b, preds_a, preds_b = self.change_torch_numpy(a, b, preds_a, preds_b)
@@ -283,8 +306,8 @@ class ImageSavingCallback(Callback):
             self.img_preds_b.append(preds_b)
 
             # if len(img_a) == 91, stack file and save to nii
-
-            if len(self.img_a) == 91:
+            if len(self.img_a) == self.subject_slice_num[0]:
+            # if len(self.img_a) == 91:
                 a_nii = np.stack(self.img_a, -1)
                 b_nii = np.stack(self.img_b, -1)
                 preds_a_nii = np.stack(self.img_preds_a, -1)
@@ -309,6 +332,8 @@ class ImageSavingCallback(Callback):
                 self.img_preds_a = []
                 self.img_preds_b = []
                 self.subject_number += 1
+                self.subject_slice_num.pop(0)
+                               
 
             if self.subject_number > self.subject_number_length:
                 log.info(f"Saving test images up to {self.subject_number_length}")
@@ -317,21 +342,21 @@ class ImageSavingCallback(Callback):
         elif len(res) == 3:
             a, b, preds_a = res
 
-            # if size of a is bigger than centercrop, then center crop
-            if a.shape[-1] > self.center_crop:
-                a = CenterCrop(self.center_crop)(a)
-                b = CenterCrop(self.center_crop)(b)
-                preds_a = CenterCrop(self.center_crop)(preds_a)
+            # # if size of a is bigger than centercrop, then center crop
+            # if a.shape[-1] > self.center_crop:
+            #     a = CenterCrop(self.center_crop)(a)
+            #     b = CenterCrop(self.center_crop)(b)
+            #     preds_a = CenterCrop(self.center_crop)(preds_a)
 
             # Change a,b,preds_a to numpy array
-            a, b, preds_a = self.change_torch_numpy(a, b, preds_a)
+            a, b, preds_a, _ = self.change_torch_numpy(a, b, preds_a, a*0)
 
             self.img_a.append(a)
             self.img_b.append(b)
             self.img_preds_a.append(preds_a)
 
-            # if len(img_a) == 91, stack file and save to nii
-            if len(self.img_a) == 91:
+            if len(self.img_a) == self.subject_slice_num[0]:
+            # if len(self.img_a) == 91:
                 a_nii = np.stack(self.img_a, -1)
                 b_nii = np.stack(self.img_b, -1)
                 preds_a_nii = np.stack(self.img_preds_a, -1)
@@ -355,7 +380,8 @@ class ImageSavingCallback(Callback):
                 self.img_b = []
                 self.img_preds_a = []
                 self.subject_number += 1
-
+                self.subject_slice_num.pop(0)
+                
             if self.subject_number > self.subject_number_length:
                 log.info(f"Saving test images up to {self.subject_number_length}")
                 return

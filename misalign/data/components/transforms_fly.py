@@ -22,27 +22,6 @@ from scipy.ndimage import binary_dilation, generate_binary_structure
 
 log = utils.get_pylogger(__name__)
 
-
-############################################################
-import cProfile
-import pstats
-import io
-
-def profile_function(func):
-    def wrapper(*args, **kwargs):
-        pr = cProfile.Profile()
-        pr.enable()
-        retval = func(*args, **kwargs)
-        pr.disable()
-        s = io.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-        return retval
-    return wrapper
-############################################################
-
 def random_crop(tensorA, tensorB, output_size=(128, 128)):
     """
     Crop randomly the image in a sample.
@@ -355,14 +334,6 @@ class dataset_synthRAD_FLY_RAM(Dataset):
         self.rand_crop = rand_crop
         self.data_dir = data_dir
         
-        # Each patient has a different number of slices        
-        # self.patient_keys = []
-        # with h5py.File(self.data_dir, 'r') as file:
-        #     self.patient_keys = list(file['MR'].keys())
-        #     self.slice_counts = [file['MR'][key].shape[-1] for key in self.patient_keys]
-        #     self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
-        
-                
         if return_msk:
             self.aug_func = Compose(
                 [
@@ -389,8 +360,6 @@ class dataset_synthRAD_FLY_RAM(Dataset):
         self.return_msk = return_msk
         self.crop_size = crop_size
 
-        # self.h5file = h5py.File(self.data_dir, 'r')  # 파일을 열고 객체를 저장
-
         #RAM으로 하는 코드
         with h5py.File(self.data_dir, 'r') as file:
             self.patient_keys = list(file['MR'].keys())
@@ -403,21 +372,10 @@ class dataset_synthRAD_FLY_RAM(Dataset):
             self.slice_counts = [data.shape[-1] for data in self.MR_data]
             self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
 
-
-        # os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
-
-        # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # print("FLY INIT 했떼이~~~~~~~~~~~~~~~~~~~~~")
-
     def __len__(self):
         """Returns the number of samples in the dataset."""
-        # os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
         return self.cumulative_slice_counts[-1]
 
-    # def __del__(self):  # 클래스가 소멸할 때 h5py 파일을 닫습니다.
-    #     self.h5file.close()
-
-    # @profile_function
     def __getitem__(self, idx):
         """Fetches a sample from the dataset given an index.
 
@@ -428,12 +386,6 @@ class dataset_synthRAD_FLY_RAM(Dataset):
             Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
         """
 
-        # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # print("FLY GET ITEM 안에 들어왔다~~~~~~~~~~~~~~~~~~~~~")
-
-        # patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
-        # slice_idx = idx - self.cumulative_slice_counts[patient_idx]
-        # patient_key = self.patient_keys[patient_idx]
         # RAM 코드
         patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
@@ -582,35 +534,12 @@ class dataset_synthRAD_FLY(Dataset):
         self.return_msk = return_msk
         self.crop_size = crop_size
 
-        # self.h5file = h5py.File(self.data_dir, 'r')  # 파일을 열고 객체를 저장
-
-        #RAM으로 하는 코드
-        # with h5py.File(self.data_dir, 'r') as file:
-        #     self.patient_keys = list(file['MR'].keys())
-        #     self.MR_data = [file['MR'][key][:] for key in self.patient_keys]
-        #     self.CT_data = [file['CT'][key][:] for key in self.patient_keys]
-        #     if self.return_msk:
-        #         self.MASK_data = [file['MASK'][key][:] for key in self.patient_keys]
-        #     else:
-        #         self.MASK_data = [None] * len(self.patient_keys)
-        #     self.slice_counts = [data.shape[-1] for data in self.MR_data]
-        #     self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
-
-
-        # os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
-
-        # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # print("FLY INIT 했떼이~~~~~~~~~~~~~~~~~~~~~")
+        self.h5file = h5py.File(self.data_dir, 'r')  # 파일을 열고 객체를 저장
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
-        # os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
         return self.cumulative_slice_counts[-1]
 
-    # def __del__(self):  # 클래스가 소멸할 때 h5py 파일을 닫습니다.
-    #     self.h5file.close()
-
-    # @profile_function
     def __getitem__(self, idx):
         """Fetches a sample from the dataset given an index.
 
@@ -624,7 +553,6 @@ class dataset_synthRAD_FLY(Dataset):
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
         patient_key = self.patient_keys[patient_idx]
 
-        # with h5py.File(self.data_dir, "r") as hr:
         A = self.h5file["MR"][patient_key][..., slice_idx]
         # if (
         #     self.deform_prob > 0
@@ -637,13 +565,6 @@ class dataset_synthRAD_FLY(Dataset):
         #     B = self.h5file["CT"][patient_key][..., slice_idx_new]
         # else:
         B = self.h5file["CT"][patient_key][..., slice_idx]
-
-        #RAM 코드
-        # A = self.MR_data[patient_idx][..., slice_idx]
-        # B = self.CT_data[patient_idx][..., slice_idx]
-        # if self.return_msk:
-        #     M = self.MASK_data[patient_idx][..., slice_idx]
-        #     M = torch.from_numpy(M[None])
 
         if self.return_msk:
             M = self.h5file["MASK"][patient_key][..., slice_idx]

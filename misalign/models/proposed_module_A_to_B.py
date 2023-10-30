@@ -13,7 +13,7 @@ from misalign.models.components.contextual_loss import (
     Contextual_Loss,
 )  # this is the CX loss
 
-from misalign.data.components.transforms_fly import dataset_IXI_FLY, dataset_synthRAD_FLY_RAM
+from misalign.data.components.transforms_fly import dataset_IXI_FLY, dataset_synthRAD_FLY_RAM, dataset_synthRAD_FLY
 from torch.utils.data import DataLoader
 
 log = utils.get_pylogger(__name__)

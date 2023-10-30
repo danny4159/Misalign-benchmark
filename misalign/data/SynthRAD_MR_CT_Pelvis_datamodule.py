@@ -113,11 +113,9 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             stage (str, optional): The stage for which to setup the data. Can be None, 'fit' or 'test'. Defaults to None.
         """
         # load and split datasets only if not loaded already
-        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        # print("나 들어왔다 1111111111111111111111111111111111111111")
         self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, rand_crop=self.hparams.rand_crop) # Use flip and crop augmentation for training data
-        self.data_val = dataset_SynthRAD_MR_CT_Pelvis_RAM(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
-        self.data_test = dataset_SynthRAD_MR_CT_Pelvis_RAM(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
+        self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
+        self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
      
 
     def train_dataloader(self):

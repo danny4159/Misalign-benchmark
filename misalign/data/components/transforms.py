@@ -564,12 +564,9 @@ class dataset_SynthRAD_MR_CT_Pelvis_RAM(Dataset):
                 RandRotate90d(keys=["A", "B"], prob=rot_prob, spatial_axes=[0, 1]),
             ]
         )
-        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        # print("나 들어왔다 222222222222222222222222222222222")
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
-        # os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
         return self.cumulative_slice_counts[-1]
 
 
@@ -582,8 +579,6 @@ class dataset_SynthRAD_MR_CT_Pelvis_RAM(Dataset):
         Returns:
             Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
         """
-        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        # print("나 들어왔다 333333333333333333333333333333333333333333")
         patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
 
@@ -623,6 +618,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         self.rand_crop = rand_crop
         self.data_dir = data_dir
         self.reverse = reverse
+
+        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
         
         # Each patient has a different number of slices        
         self.patient_keys = []
@@ -637,9 +634,6 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
                 RandRotate90d(keys=["A", "B"], prob=rot_prob, spatial_axes=[0, 1]),
             ]
         )
-        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        # print("나 들어왔다 222222222222222222222222222222222")
-        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
@@ -655,8 +649,6 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         Returns:
             Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
         """
-        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        # print("나 들어왔다 333333333333333333333333333333333333333333")
         patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
         patient_key = self.patient_keys[patient_idx]

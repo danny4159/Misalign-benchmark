@@ -315,6 +315,7 @@ class dataset_IXI_FLY(Dataset):
             else:
                 return A, B
 
+###################################################
 class dataset_synthRAD_FLY_RAM(Dataset):
     def __init__(
         self,
@@ -389,7 +390,6 @@ class dataset_synthRAD_FLY_RAM(Dataset):
         # RAM 코드
         patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
-
         
         # with h5py.File(self.data_dir, "r") as hr:
         # A = self.h5file["MR"][patient_key][..., slice_idx]
@@ -476,10 +476,7 @@ class dataset_synthRAD_FLY_RAM(Dataset):
             else:
                 return A, B
             
-
-#########################################
 # 원래코드
-
 class dataset_synthRAD_FLY(Dataset):
     def __init__(
         self,
@@ -500,6 +497,7 @@ class dataset_synthRAD_FLY(Dataset):
         self.data_dir = data_dir
         
         os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
+
         # Each patient has a different number of slices        
         self.patient_keys = []
         with h5py.File(self.data_dir, 'r') as file:
@@ -534,8 +532,6 @@ class dataset_synthRAD_FLY(Dataset):
         self.return_msk = return_msk
         self.crop_size = crop_size
 
-        self.h5file = h5py.File(self.data_dir, 'r')  # 파일을 열고 객체를 저장
-
     def __len__(self):
         """Returns the number of samples in the dataset."""
         return self.cumulative_slice_counts[-1]
@@ -553,7 +549,8 @@ class dataset_synthRAD_FLY(Dataset):
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
         patient_key = self.patient_keys[patient_idx]
 
-        A = self.h5file["MR"][patient_key][..., slice_idx]
+        with h5py.File(self.data_dir, 'r') as file:
+            A = file["MR"][patient_key][..., slice_idx]
         # if (
         #     self.deform_prob > 0
         #     and idx > 2
@@ -564,11 +561,11 @@ class dataset_synthRAD_FLY(Dataset):
         #     A = self.h5file["MR"][patient_key][..., slice_idx]
         #     B = self.h5file["CT"][patient_key][..., slice_idx_new]
         # else:
-        B = self.h5file["CT"][patient_key][..., slice_idx]
+            B = file["CT"][patient_key][..., slice_idx]
 
-        if self.return_msk:
-            M = self.h5file["MASK"][patient_key][..., slice_idx]
-            M = torch.from_numpy(M[None])
+            if self.return_msk:
+                M = file["MASK"][patient_key][..., slice_idx]
+                M = torch.from_numpy(M[None])
 
         A = A.astype(np.float32)
         B = B.astype(np.float32)

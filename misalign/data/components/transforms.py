@@ -539,12 +539,90 @@ def download_process_SynthRAD_MR_CT_Pelvis(data_dir: str, # h5를 만들기위�
     else:
         return
 
-
-class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
-    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, *args, **kwargs):
+# TODO: Proposed 빨리 돌리기위해서 ram에서 돌아가도록 바꾼 코드
+class dataset_SynthRAD_MR_CT_Pelvis_RAM(Dataset):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False, *args, **kwargs):
         super().__init__()
         self.rand_crop = rand_crop
         self.data_dir = data_dir
+        self.reverse = reverse
+        
+        # Each patient has a different number of slices        
+        with h5py.File(data_dir, 'r') as file:
+            self.patient_keys = list(file['MR'].keys())
+            
+            # Loading all MR and CT data into memory
+            self.MR_data = [file['MR'][key][:] for key in self.patient_keys]
+            self.CT_data = [file['CT'][key][:] for key in self.patient_keys]
+            
+            self.slice_counts = [data.shape[-1] for data in self.MR_data]
+            self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
+        
+        self.aug_func = Compose(
+            [
+                RandFlipd(keys=["A", "B"], prob=flip_prob, spatial_axis=[0, 1]),
+                RandRotate90d(keys=["A", "B"], prob=rot_prob, spatial_axes=[0, 1]),
+            ]
+        )
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        # print("나 들어왔다 222222222222222222222222222222222")
+
+    def __len__(self):
+        """Returns the number of samples in the dataset."""
+        # os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
+        return self.cumulative_slice_counts[-1]
+
+
+    def __getitem__(self, idx):
+        """Fetches a sample from the dataset given an index.
+
+        Args:
+            idx (int): The index for the sample to retrieve.
+
+        Returns:
+            Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
+        """
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        # print("나 들어왔다 333333333333333333333333333333333333333333")
+        patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
+        slice_idx = idx - self.cumulative_slice_counts[patient_idx]
+
+        # Retrieve the data from memory instead of reading from the h5py file
+        A = self.MR_data[patient_idx][..., slice_idx]
+        B = self.CT_data[patient_idx][..., slice_idx]
+
+        A = torch.from_numpy(A).unsqueeze(0).float()
+        B = torch.from_numpy(B).unsqueeze(0).float()
+
+        # Create a dictionary for the data
+        data_dict = {"A": A, "B": B}
+
+        # Apply the random flipping
+        data_dict = self.aug_func(data_dict)
+
+        A = data_dict["A"]
+        A = convert_to_tensor(A)
+        B = data_dict["B"]
+        B = convert_to_tensor(B)
+
+        if self.rand_crop:
+            A, B = random_crop(A, B, (320,192))
+        else:
+            _, h, w = A.shape
+            A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
+        
+        if self.reverse:
+            return B, A
+        else:
+            return A, B
+    
+#원래코드
+class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False,*args, **kwargs):
+        super().__init__()
+        self.rand_crop = rand_crop
+        self.data_dir = data_dir
+        self.reverse = reverse
         
         # Each patient has a different number of slices        
         self.patient_keys = []
@@ -559,10 +637,12 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
                 RandRotate90d(keys=["A", "B"], prob=rot_prob, spatial_axes=[0, 1]),
             ]
         )
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        # print("나 들어왔다 222222222222222222222222222222222")
+        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
-        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
         return self.cumulative_slice_counts[-1]
 
 
@@ -575,7 +655,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         Returns:
             Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
         """
-        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        # print("나 들어왔다 333333333333333333333333333333333333333333")
         patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
         patient_key = self.patient_keys[patient_idx]
@@ -603,5 +684,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         else:
             _, h, w = A.shape
             A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
-            
-        return A, B
+
+        if self.reverse:
+            return B, A
+        else:
+            return A, B

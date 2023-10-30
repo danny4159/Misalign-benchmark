@@ -13,7 +13,7 @@ from misalign.models.components.contextual_loss import (
     Contextual_Loss,
 )  # this is the CX loss
 
-from misalign.data.components.transforms_fly import dataset_IXI_FLY, dataset_synthRAD_FLY
+from misalign.data.components.transforms_fly import dataset_IXI_FLY, dataset_synthRAD_FLY_RAM
 from torch.utils.data import DataLoader
 
 log = utils.get_pylogger(__name__)
@@ -75,8 +75,8 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
 
         if self.params.flag_meta_learning:
             log.info("Using meta-learning")
-            # self.data_meta = dataset_IXI_FLY( #TODO: 이거 if문으로 처리될 수 있도록
-            self.data_meta = dataset_synthRAD_FLY(
+            # self.data_meta = dataset_IXI_FLY( #TODO: 수정. 이거 if문으로 처리될 수 있도록
+            self.data_meta = dataset_synthRAD_FLY_RAM(
                 rand_crop=True,
                 data_dir=self.params.dir_meta_learning,
                 crop_size=80,
@@ -84,6 +84,7 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
                 aug=True,
                 return_msk=True,
             )
+            # item = self.data_meta[0]
             self.clean_dloader = DataLoader(self.data_meta, batch_size=32, shuffle=True)
 
         else:

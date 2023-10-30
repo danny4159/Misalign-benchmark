@@ -9,7 +9,7 @@ from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
 from torchvision.datasets import MNIST
 from torchvision.transforms import transforms
 
-from misalign.data.components.transforms import download_process_SynthRAD_MR_CT_Pelvis, dataset_SynthRAD_MR_CT_Pelvis
+from misalign.data.components.transforms import download_process_SynthRAD_MR_CT_Pelvis, dataset_SynthRAD_MR_CT_Pelvis_RAM, dataset_SynthRAD_MR_CT_Pelvis
 
 class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
     """LightningDataModule for SynthRAD_MR_CT_Pelvis dataset.
@@ -86,13 +86,13 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             
             if phase == 'train': # misalign only for training data
                 mis_x, mis_y, Rot_z, M_prob, D_prob = self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob
-                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_MASK_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # save to hdf5
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_chunk.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정
                 self.train_dir = write_dir
             
             elif phase == 'val' or 'test': # no misalignment for validation and test data
                 # mis_x, mis_y, Rot_z, M_prob, D_prob = 0.0, 0.0, 0.0, 0.0, 0.0
                 mis_x, mis_y, Rot_z, M_prob, D_prob = 0, 0, 0, 0, 0
-                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_MASK_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # save to hdf5  
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_chunk.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정 
                 if phase == 'val':
                     self.val_dir = write_dir
                 elif phase == 'test':
@@ -113,9 +113,11 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             stage (str, optional): The stage for which to setup the data. Can be None, 'fit' or 'test'. Defaults to None.
         """
         # load and split datasets only if not loaded already
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        # print("나 들어왔다 1111111111111111111111111111111111111111")
         self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, rand_crop=self.hparams.rand_crop) # Use flip and crop augmentation for training data
-        self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
-        self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
+        self.data_val = dataset_SynthRAD_MR_CT_Pelvis_RAM(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
+        self.data_test = dataset_SynthRAD_MR_CT_Pelvis_RAM(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
      
 
     def train_dataloader(self):
@@ -262,6 +264,6 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/13_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 IXI / SynthRAD_MR_CT_Pelvis
+    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/13_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 경로 맞게
     _.prepare_data()
     _.setup()

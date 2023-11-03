@@ -408,14 +408,15 @@ class WeightSavingCallback(Callback):
         # `w` 가중치가 outputs에 있는지 확인합니다.
         if 'w' in outputs:
             w = outputs['w']
-            w_numpy = w.detach().cpu().numpy()
 
             res = pl_module.model_step(batch)
             a, b, preds_b = res
+
+            w_numpy = w.detach().cpu().numpy()
             a_numpy = a.detach().cpu().numpy()
             b_numpy = b.detach().cpu().numpy()
 
-            w_a_b_numpy = np.concatenate((w.numpy, a_numpy, b_numpy),axis=0)
+            w_a_b_numpy = np.concatenate((w_numpy, a_numpy, b_numpy),axis=0)
             # 환자 ID와 슬라이스 인덱스를 추출합니다.
             patient_idx, slice_idx = self.dataset.get_patient_slice_idx(batch_idx)
 

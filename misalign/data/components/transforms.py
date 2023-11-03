@@ -670,14 +670,50 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         A = convert_to_tensor(A)
         B = data_dict["B"]
         B = convert_to_tensor(B)
+        print("##############################################################")
+        print(A.shape)
+        print(B.shape)
+        # if self.rand_crop:
+        #     # A, B = random_crop(A, B, (320,192)) #TODO:다시수정 이게 원래 있던 코드
+        #     A, B = random_crop(A, B, (384,240)) # 이건 weight 맞추려고 수정해봤던것
+        # else:
+        #     _, h, w = A.shape
+        #     A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
 
-        if self.rand_crop:
-            # A, B = random_crop(A, B, (320,192)) #TODO:다시수정
-            A, B = random_crop(A, B, (388,248))
-        else:
-            _, h, w = A.shape
-            A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
+        ###############################################################
+        # weight 위해서 잠깐 추가
+        # A와 B를 패딩하는 코드를 추가
+        target_height = 592
+        target_width = 416
 
+        # 현재 이미지 크기
+        current_height, current_width = A.shape[-2], A.shape[-1]
+
+        # 필요한 패딩 계산
+        pad_height = max(target_height - current_height, 0)
+        pad_width = max(target_width - current_width, 0)
+
+        # 상하, 좌우 패딩 크기 계산
+        pad_top = pad_height // 2
+        pad_bottom = pad_height - pad_top
+        pad_left = pad_width // 2
+        pad_right = pad_width - pad_left
+
+        # 패딩을 추가할 텐서 생성 (모두 0으로 채워진)
+        pad_tensor = torch.zeros((A.size(0), target_height, target_width), dtype=A.dtype, device=A.device)
+
+        # 계산된 위치에 원본 이미지를 복사하여 패딩 적용
+        pad_tensor[:, pad_top:pad_top+current_height, pad_left:pad_left+current_width] = A
+        A = pad_tensor
+
+        pad_tensor = torch.zeros((B.size(0), target_height, target_width), dtype=B.dtype, device=B.device)
+        pad_tensor[:, pad_top:pad_top+current_height, pad_left:pad_left+current_width] = B
+        B = pad_tensor
+        
+        print("After padding:")
+        print(A.shape)
+        print(B.shape)
+    
         if self.reverse:
             return B, A
         else:

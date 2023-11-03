@@ -623,11 +623,14 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         
         # Each patient has a different number of slices        
         self.patient_keys = []
+        self.B_indices = []
         with h5py.File(self.data_dir, 'r') as file:
             self.patient_keys = list(file['MR'].keys())
             self.slice_counts = [file['MR'][key].shape[-1] for key in self.patient_keys]
             self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
-        
+            self.B_indices = np.arange(self.cumulative_slice_counts[-1])
+            np.random.shuffle(self.B_indices)  # Shuffle indices for B
+            
         self.aug_func = Compose(
             [
                 RandFlipd(keys=["A", "B"], prob=flip_prob, spatial_axis=[0, 1]),
@@ -649,13 +652,19 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         Returns:
             Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
         """
-        patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
-        slice_idx = idx - self.cumulative_slice_counts[patient_idx]
-        patient_key = self.patient_keys[patient_idx]
+        patient_idx_A, slice_idx_A = self.get_patient_slice_idx(idx)
+        patient_key_A = self.patient_keys[patient_idx_A]
+
+        # Draw a random index for B, reshuffle if necessary
+        idx_B = self.B_indices[idx]
+        if idx == len(self.B_indices) - 1:  # If we've used all indices, reshuffle
+            np.random.shuffle(self.B_indices)
+        patient_idx_B, slice_idx_B = self.get_patient_slice_idx(idx_B)
+        patient_key_B = self.patient_keys[patient_idx_B]
 
         with h5py.File(self.data_dir, 'r') as file:
-            A = file['MR'][patient_key][..., slice_idx]
-            B = file['CT'][patient_key][..., slice_idx]
+            A = file['MR'][patient_key_A][..., slice_idx_A]
+            B = file['CT'][patient_key_B][..., slice_idx_B]
 
         A = torch.from_numpy(A).unsqueeze(0).float()
         B = torch.from_numpy(B).unsqueeze(0).float()

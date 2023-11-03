@@ -274,7 +274,7 @@ class ImageSavingCallback(Callback):
                 code_root_dir = os.path.dirname(head)
                 break
             head, _= os.path.split(head)
-        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'prepared_data_0_0_0_0_0_chunk.h5') # TODO: 수정. 데이터셋 이름 바뀌면.
+        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'prepared_data_0_0_0_0_0_OnlyValMask_Norm.h5') # TODO: 수정. 데이터셋 이름 바뀌면.
         # h5 파일에서 MR 그룹의 모든 데이터셋을 리스트로 불러오기
         with h5py.File(data_path, 'r') as file:
             mr_group = file['MR']
@@ -388,3 +388,37 @@ class ImageSavingCallback(Callback):
         else:
             raise NotImplementedError("This function has not been implemented yet.")
         return
+
+
+class WeightSavingCallback(Callback):
+    """training batch마다 생성되는 weight를 npy로 저장"""
+    def on_train_start(self, trainer, pl_module):
+        # 트레이닝이 시작할 때 폴더를 생성합니다.
+        folder_name = os.path.join(trainer.default_root_dir, "results", "weights")
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+        self.save_folder_name = folder_name
+
+        self.dataset = trainer.train_dataloader.dataset
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        # 현재 epoch 번호를 가져옵니다.
+        current_epoch = trainer.current_epoch
+
+        # `w` 가중치가 outputs에 있는지 확인합니다.
+        if 'w' in outputs:
+            w = outputs['w']
+            w_numpy = w.detach().cpu().numpy()
+
+            res = pl_module.model_step(batch)
+            a, b, preds_b = res
+            a_numpy = a.detach().cpu().numpy()
+            b_numpy = b.detach().cpu().numpy()
+
+            w_a_b_numpy = np.concatenate((w.numpy, a_numpy, b_numpy),axis=0)
+            # 환자 ID와 슬라이스 인덱스를 추출합니다.
+            patient_idx, slice_idx = self.dataset.get_patient_slice_idx(batch_idx)
+
+            # 파일 이름에 환자 ID, 슬라이스 인덱스, epoch 번호를 포함하여 `w`를 저장합니다.
+            filename = f'weights_epoch{current_epoch}_patient{patient_idx}_slice{slice_idx}.npy'
+            np.save(os.path.join(self.save_folder_name, filename), w_a_b_numpy)

@@ -12,3 +12,6 @@ ImageSavingCallback:
   _target_: misalign.callbacks.image_callback.ImageSavingCallback
   center_crop: 256
   subject_number_length: 5
+
+WeightSavingCallback:
+ _target_: misalign.callbacks.image_callback.WeightSavingCallback

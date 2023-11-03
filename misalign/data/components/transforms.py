@@ -672,7 +672,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         B = convert_to_tensor(B)
 
         if self.rand_crop:
-            A, B = random_crop(A, B, (320,192))
+            # A, B = random_crop(A, B, (320,192)) #TODO:다시수정
+            A, B = random_crop(A, B, (388,248))
         else:
             _, h, w = A.shape
             A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
@@ -681,3 +682,9 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
             return B, A
         else:
             return A, B
+            
+    def get_patient_slice_idx(self, idx):
+        """ 주어진 샘플 인덱스에 대한 환자 인덱스와 슬라이스 인덱스를 반환합니다. """
+        patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
+        slice_idx = idx - self.cumulative_slice_counts[patient_idx]
+        return patient_idx, slice_idx

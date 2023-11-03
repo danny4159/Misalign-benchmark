@@ -105,8 +105,8 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
         loss_G = torch.zeros(1, device=self.device, requires_grad=True)
 
         if weight is not None:
-            weight_spatial = weight
-            weight_batch = torch.mean(weight_spatial, dim=(1, 2, 3),keepdim=True)
+            weight_spatial = weight # batch, 1 , width, heith
+            weight_batch = torch.mean(weight_spatial, dim=(1, 2, 3),keepdim=True) # batch, 1 , 1, 1
 
         if self.params.flag_register:
             Trans_A = self.netR(fake_b, real_b)
@@ -166,8 +166,11 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
         return loss_G
 
     def determine_weight_LRE(self, real_a, real_b, meta_real_a, meta_real_b, mask=None):
+        """
+        weight: output과 label간에 loss를 통해 어느 pixel에 weight를 더 줄지 학습해
+        """
         if mask is not None:
-            mask = mask.float()
+            mask = mask.float() # Meta mask 그냥 Mask있으면 Mask 씌우는거 학습은 없어
         else:
             mask = 1.0
 
@@ -182,7 +185,7 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
                 fake_b = self.spatial_transform(fake_b, Trans_A)
             if self.params.flag_meta_use_spatial:
                 weight = torch.zeros(
-                    real_a.size(), device=self.device, requires_grad=True
+                    real_a.size(), device=self.device, requires_grad=True # 0으로 초기화는 하지만 학습 가능한 매개변수
                 )
             else:
                 weight = torch.zeros(
@@ -191,14 +194,14 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
 
             _loss = self.criterionL1(real_b, fake_b)
             loss = torch.mean(_loss * weight)
-            meta_opt.step(loss)
+            meta_opt.step(loss) #TODO: 이게 weight 학습에 어떤 영향을 주는지 사실 잘 모르겠어.
 
             meta_val_loss = self.criterionL1(
                 (meta_real_b + 1) * mask, (meta_model(meta_real_a) + 1) * mask
             )
             meta_val_loss = torch.mean(meta_val_loss)
 
-            eps_grad = torch.autograd.grad(meta_val_loss, weight)[
+            eps_grad = torch.autograd.grad(meta_val_loss, weight)[ #아 이런씩으로 학습시킬수도 있구나?
                 0
             ].detach()  # Gradient
 
@@ -243,7 +246,7 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
                 mask = None
 
             if self.params.meta_type == "LRE":
-                w = self.determine_weight_LRE(
+                w = self.determine_weight_LRE( #TODO: 여기서 w는 뭘까??
                     real_a, real_b, meta_real_a, meta_real_b, mask=mask
                 )
                 optimizer_G.zero_grad()
@@ -282,6 +285,7 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
             if torch.sum(w) > 1:
                 self.loss_G = loss_G.detach() * 0.1 + self.loss_G * 0.9
                 self.log("G_loss", self.loss_G, prog_bar=True)
+        return {'w': w} # weight 저장을 위해
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

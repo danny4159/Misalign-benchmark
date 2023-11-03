@@ -448,11 +448,8 @@ class dataset_synthRAD_FLY_RAM(Dataset):
         # else:
         #     A, B = translate_images(A, B, self.misalign_x, self.misalign_y, self.degree)
 
-        # if np.random.rand() < self.motion_prob:
-        #     if self.reverse:
-        #         A = motion_artifact(A)  # A is the label
-        #     else:
-        #         B = motion_artifact(B)  # B is the label
+        if np.random.rand() < self.motion_prob:
+            A = motion_artifact(A)  # A is the MR
 
         A, B = torch.clamp(A, min=-1, max=1), torch.clamp(
             B, min=-1, max=1
@@ -599,11 +596,8 @@ class dataset_synthRAD_FLY(Dataset):
         # else:
         #     A, B = translate_images(A, B, self.misalign_x, self.misalign_y, self.degree)
 
-        # if np.random.rand() < self.motion_prob:
-        #     if self.reverse:
-        #         A = motion_artifact(A)  # A is the label
-        #     else:
-        #         B = motion_artifact(B)  # B is the label
+        if np.random.rand() < self.motion_prob:
+            A = motion_artifact(A)  # A is the MR
 
         A, B = torch.clamp(A, min=-1, max=1), torch.clamp(
             B, min=-1, max=1

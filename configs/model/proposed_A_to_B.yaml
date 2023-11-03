@@ -28,10 +28,10 @@ netD_A:
 
 params: # Other params
   pool_size: 0
-  lambda_l1: 20 # L1 loss
-  lambda_style: 20 # Style loss
-  lambda_smooth: 10 # L1-Smooth loss
-  lambda_reg_consistency: 10 # Reg 를 끄는 방법 -> 0
+  lambda_l1: 100 # L1 loss
+  lambda_style: 5 # Style loss
+  lambda_smooth: 100 # L1-Smooth loss
+  lambda_reg_consistency: 120 # Reg 를 끄는 방법 -> 0
   reverse: ${data.reverse} # A->B if False, B->A if True
   flag_GAN: True # Else : no GAN
   flag_register: True # else l1  -> False: Registration 꺼짐

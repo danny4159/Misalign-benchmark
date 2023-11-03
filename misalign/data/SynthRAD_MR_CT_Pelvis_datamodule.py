@@ -86,7 +86,7 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             
             if phase == 'train': # misalign only for training data
                 mis_x, mis_y, Rot_z, M_prob, D_prob = self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob
-                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_OnlyValMask_Norm_PatientReduce.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_OnlyValMask_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정
                 self.train_dir = write_dir
             
             elif phase == 'val' or 'test': # no misalignment for validation and test data
@@ -124,8 +124,7 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            # shuffle=True,#TODO:다시수정
-            shuffle=False,
+            shuffle=True,
         )
 
     def val_dataloader(self):

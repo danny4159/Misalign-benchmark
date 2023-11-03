@@ -672,8 +672,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         B = convert_to_tensor(B)
 
         if self.rand_crop:
-            # A, B = random_crop(A, B, (320,192))
-            A, B = random_crop(A, B, (416,256)) # 이건 weight 맞출때
+            A, B = random_crop(A, B, (320,192))
+            # A, B = random_crop(A, B, (416,256)) # 이건 weight 맞출때
         else:
             _, h, w = A.shape
             A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four

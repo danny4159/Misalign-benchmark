@@ -246,7 +246,7 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
                 mask = None
 
             if self.params.meta_type == "LRE":
-                w = self.determine_weight_LRE( #TODO: 여기서 w는 뭘까??
+                w = self.determine_weight_LRE( 
                     real_a, real_b, meta_real_a, meta_real_b, mask=mask
                 )
                 optimizer_G.zero_grad()

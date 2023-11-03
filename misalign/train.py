@@ -95,7 +95,8 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     
     if cfg.get("test"):
         log.info("Starting testing!")
-        ckpt_path = trainer.checkpoint_callback.best_model_path
+        ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_pgan_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_PGAN_lv0_Test/runs/2023-10-27_11-16-24/checkpoints/epoch_epoch_058.ckpt" #TODO: test만하는경우 여기에 직접입력하기
+        # ckpt_path = trainer.checkpoint_callback.best_model_path
         if ckpt_path == "":
             log.warning("Best ckpt not found! Using current weights for testing...")
             ckpt_path = None

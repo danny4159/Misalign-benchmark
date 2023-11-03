@@ -38,7 +38,8 @@ params: # Other params
   flag_ctx: True # Else: l1-perceptual # False: CTX 가 아니고 Perceptual
   flag_feature_descriptor: VGG # or VGG
   flag_meta_learning: True # else no meta # 끄면 Meta x
-  flag_meta_use_spatial: True # 혹시 시간 되면 True False 의 차이 
+  flag_meta_use_spatial: True # 혹시 시간 되면 True False 의 차이
+  flag_weight_saving: False # weight saving (logs에 result안에) burden이 크다
   meta_type: LRE # 고정
   flag_use_mask: False # use mask in meta loss # 혹시 시간 되면 True False 의 차이 
   # dir_meta_learning: ${paths.root_dir}/data/IXI/val/prepared_data_0.0_0.0_0.0_0.0_0.0.h5 #TODO: 수정

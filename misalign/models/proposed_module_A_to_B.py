@@ -285,7 +285,9 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
             if torch.sum(w) > 1:
                 self.loss_G = loss_G.detach() * 0.1 + self.loss_G * 0.9
                 self.log("G_loss", self.loss_G, prog_bar=True)
-        return {'w': w} # weight 저장을 위해
+        
+        if self.params.flag_weight_saving:
+            return {'w': w} # weight 저장을 위해. weight saving callback함수에서 사용
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

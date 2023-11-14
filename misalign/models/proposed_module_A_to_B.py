@@ -157,7 +157,8 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
             loss_style_B = self.style_loss(reg_fake_b, real_b)
 
         if weight is not None:
-            loss_style_B = torch.mean(loss_style_B * weight_batch)
+            # loss_style_B = torch.mean(loss_style_B * weight_batch)  #TODO: 기존코드. 내가한번빼봄.
+            loss_style_B = torch.mean(loss_style_B)
         else:
             loss_style_B = torch.mean(loss_style_B)
 

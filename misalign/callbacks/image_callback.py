@@ -404,7 +404,6 @@ class WeightSavingCallback(Callback):
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         # 현재 epoch 번호를 가져옵니다.
         current_epoch = trainer.current_epoch
-
         # `w` 가중치가 outputs에 있는지 확인합니다.
         if 'w' in outputs:
             w = outputs['w']
@@ -415,8 +414,9 @@ class WeightSavingCallback(Callback):
             w_numpy = w.detach().cpu().numpy()
             a_numpy = a.detach().cpu().numpy()
             b_numpy = b.detach().cpu().numpy()
+            preds_b_numpy = preds_b.detach().cpu().numpy()
 
-            w_a_b_numpy = np.concatenate((w_numpy, a_numpy, b_numpy),axis=0)
+            w_a_b_numpy = np.concatenate((w_numpy, a_numpy, b_numpy, preds_b_numpy),axis=0)
             # 환자 ID와 슬라이스 인덱스를 추출합니다.
             patient_idx, slice_idx = self.dataset.get_patient_slice_idx(batch_idx)
 

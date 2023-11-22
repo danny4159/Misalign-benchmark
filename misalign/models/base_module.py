@@ -70,7 +70,11 @@ class BaseModule(LightningModule):
             pred_hl, pred_hh = self.netG_A.forward2(real_a, real_b)
             fake_a = pred_hl
             fake_b = pred_lh
-
+        
+        elif self.netG_A._get_name() == 'DAModule': # For DAM
+            fake_b = self.netG_B.forward(real_a, real_b)
+            fake_a = self.netG_A.forward(real_b, real_a)
+        
         else:
             fake_b, fake_a = self.forward(real_a, real_b)
         return real_a, real_b, fake_a, fake_b

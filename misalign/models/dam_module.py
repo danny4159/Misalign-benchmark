@@ -47,23 +47,29 @@ class DAMModule(BaseModule):
         self.criterionL1 = torch.nn.L1Loss()
 
 
-    def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_style, lambda_cycle_a, lambda_cycle_b):
+    def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_style, lambda_cycle_a, lambda_cycle_b, lambda_cycle_style):
+        
+        ## Cycle loss
+        # MR > CT > MR
+        # rec_a = self.netG_A(fake_b, fake_a)
+        rec_a = self.netG_A(fake_b, real_a)
+        loss_cycle_A = self.criterionL1(real_a, rec_a) * lambda_cycle_a
+        # CT > MR > CT
+        # rec_b = self.netG_B(fake_a, fake_b) 
+        rec_b = self.netG_B(fake_a, real_b) 
+        loss_cycle_B = self.criterionL1(real_b, rec_b) * lambda_cycle_b
         
         ## Contextual loss
         loss_style_A = self.style_loss(real_a, fake_a)
         loss_style_B = self.style_loss(real_b, fake_b)
         loss_style = (loss_style_A + loss_style_B) * lambda_style
 
+        ## Contextual loss
+        loss_cycle_style_A = self.style_loss(rec_b, real_b)
+        loss_cycle_style_B = self.style_loss(rec_a, real_a)
+        loss_cycle_style = (loss_cycle_style_A + loss_cycle_style_B) * lambda_cycle_style
 
-        ## Cycle loss
-        # MR > CT > MR
-        rec_a = self.netG_A(fake_b, fake_a)
-        loss_cycle_A = self.criterionL1(real_a, rec_a) * lambda_cycle_a
-        # CT > MR > CT
-        rec_b = self.netG_B(fake_a, fake_b) 
-        loss_cycle_B = self.criterionL1(real_b, rec_b) * lambda_cycle_b
-        
-        loss_G = loss_style + loss_cycle_A + loss_cycle_B
+        loss_G = loss_style + loss_cycle_A + loss_cycle_B + loss_cycle_style
 
         return loss_G
 
@@ -73,7 +79,7 @@ class DAMModule(BaseModule):
         real_a, real_b, fake_a, fake_b = self.model_step(batch)
 
         with optimizer_G.toggle_model():
-            loss_G = self.backward_G(real_a, real_b, fake_a, fake_b, self.params.lambda_style, self.params.lambda_cycle_a, self.params.lambda_cycle_b)
+            loss_G = self.backward_G(real_a, real_b, fake_a, fake_b, self.params.lambda_style, self.params.lambda_cycle_a, self.params.lambda_cycle_b, self.params.lambda_cycle_style)
             self.manual_backward(loss_G)
             optimizer_G.step()
             optimizer_G.zero_grad()

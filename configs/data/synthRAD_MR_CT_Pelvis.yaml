@@ -10,6 +10,6 @@ reverse: False # New
 flip_prob: 0.0
 rot_prob: 0.0
 rand_crop: True #False
-batch_size: 2 #12
-num_workers: 3
+batch_size: 24 #30 #16 #12 #2 #1
+num_workers: 3 # 3
 pin_memory: False

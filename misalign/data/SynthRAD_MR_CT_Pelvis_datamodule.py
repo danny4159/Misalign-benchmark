@@ -113,7 +113,7 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             stage (str, optional): The stage for which to setup the data. Can be None, 'fit' or 'test'. Defaults to None.
         """
         # load and split datasets only if not loaded already
-        self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, rand_crop=self.hparams.rand_crop) # Use flip and crop augmentation for training data
+        self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse=self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, rand_crop=self.hparams.rand_crop, shuffle=self.hparams.shuffle) # Use flip and crop augmentation for training data
         self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
         self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0)
      
@@ -262,6 +262,6 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/13_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 경로 맞게
+    _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/07_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 경로 맞게
     _.prepare_data()
     _.setup()

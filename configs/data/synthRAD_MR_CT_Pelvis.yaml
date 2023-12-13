@@ -10,6 +10,7 @@ reverse: False # New
 flip_prob: 0.0
 rot_prob: 0.0
 rand_crop: True #False
+shuffle: False #Shuffling training set for unsupervised learning
 batch_size: 2 #12
 num_workers: 3
 pin_memory: False

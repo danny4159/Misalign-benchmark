@@ -613,7 +613,7 @@ class dataset_SynthRAD_MR_CT_Pelvis_RAM(Dataset):
     
 #원래코드
 class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
-    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False,*args, **kwargs):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False, shuffle=False, *args, **kwargs):
         super().__init__()
         self.rand_crop = rand_crop
         self.data_dir = data_dir
@@ -629,7 +629,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
             self.slice_counts = [file['MR'][key].shape[-1] for key in self.patient_keys]
             self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
             self.B_indices = np.arange(self.cumulative_slice_counts[-1])
-            np.random.shuffle(self.B_indices)  # Shuffle indices for B
+            if shuffle:
+                np.random.shuffle(self.B_indices)  # Shuffle indices for B
             
         self.aug_func = Compose(
             [

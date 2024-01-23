@@ -8,6 +8,7 @@ import numpy as np
 import random
 from torch.autograd import Variable
 from copy import deepcopy
+from . import networks_resvit
 
 ###############################################################################
 # Helper Functions
@@ -287,6 +288,8 @@ def define_G(
     opt=None,
     fuse=True,
     shared_decoder=False,
+    vit_name='Res-ViT-B_16',
+    fine_size=192,
 ):
     """Create a generator
 
@@ -398,6 +401,14 @@ def define_G(
             fuse=fuse,
             shared_decoder=shared_decoder,
         )
+    elif netG == "resvit":
+        net = networks_resvit.ResViT(
+            networks_resvit.CONFIGS[vit_name],
+            input_dim = input_nc,
+            output_dim = output_nc,
+            ngf = ngf,
+            img_size = fine_size,  # fineSize
+            vis = False)
     else:
         raise NotImplementedError("Generator model name [%s] is not recognized" % netG)
     return init_net(

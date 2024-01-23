@@ -94,9 +94,12 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         log.info(f"{key}: {value}")
     
     if cfg.get("test"):
-        log.info("Starting testing!")
-        ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_pgan_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_PGAN_lv0_Test/runs/2023-10-27_11-16-24/checkpoints/epoch_epoch_058.ckpt" #TODO: test만하는경우 여기에 직접입력하기
-        # ckpt_path = trainer.checkpoint_callback.best_model_path
+        log.info("Starting testing!") # TODO: Test 할때 여기 조정하기.
+        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_pgan_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_PGAN_lv0/runs/2023-10-27_09-12-22/checkpoints/epoch_epoch_095.ckpt"
+        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_proposed_A_to_B_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Proposed_100_30_100_120_l1WeightOut/runs/2023-11-07_03-25-04/checkpoints/epoch_epoch=098.ckpt" #TODO: test만하는경우 여기에 직접입력하기
+        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_DAM_Train_cycle1_cycleWithReal/runs/2023-11-22_10-37-27/checkpoints/epoch_epoch=099.ckpt" #TODO: test만하는경우 여기에 직접입력하기
+        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_DAM_Train_justLowBatch/runs/2023-11-24_06-23-57/checkpoints/epoch_epoch=093.ckpt"
+        ckpt_path = trainer.checkpoint_callback.best_model_path # train 할땐 켜고 test할땐 끄고
         if ckpt_path == "":
             log.warning("Best ckpt not found! Using current weights for testing...")
             ckpt_path = None

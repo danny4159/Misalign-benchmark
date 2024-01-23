@@ -1,0 +1,54 @@
+_target_: misalign.models.resvit_module.ResViTModule
+
+name: resvit
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+  betas: [0.5, 0.999]
+  weight_decay: 0.0001
+
+netG_A:
+  _target_: misalign.models.components.networks_v2.define_G
+  netG: resvit
+  input_nc: 1
+  output_nc: 1
+  ngf: 64
+  vit_name: 'Res-ViT-B_16'
+  fine_size: 256
+  use_dropout: False
+  init_type: 'normal'
+
+netG_B:
+  _target_: misalign.models.components.networks_v2.define_G
+  netG: resvit
+  input_nc: 1
+  output_nc: 1
+  ngf: 64
+  vit_name: 'Res-ViT-B_16'
+  fine_size: 256
+  use_dropout: False
+  init_type: 'normal'
+
+netD_A:
+  _target_: misalign.models.components.networks_v2.define_D
+  netD: "basic"
+  input_nc: 2
+  ndf: 64
+  norm: 'instance'
+  n_layers_D: 3
+  init_type: 'normal'
+
+netD_B:
+  _target_: misalign.models.components.networks_v2.define_D
+  netD: "basic"
+  input_nc: 2
+  ndf: 64
+  norm: 'instance'
+  n_layers_D: 3
+  init_type: 'normal'
+
+params: # Other params
+  pool_size: 0
+  lambda_l1: 100 # 튜닝 # 20 50 100 150

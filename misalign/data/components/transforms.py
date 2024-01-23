@@ -672,7 +672,8 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         B = convert_to_tensor(B)
 
         if self.rand_crop:
-            A, B = random_crop(A, B, (320,192))
+            # A, B = random_crop(A, B, (320,192)) # 이게 지금까지 계속 써왔던 것
+            A, B = random_crop(A, B, (256,256)) # resvit 용
             # A, B = random_crop(A, B, (416,256)) # 이건 weight 맞출때
         else:
             _, h, w = A.shape

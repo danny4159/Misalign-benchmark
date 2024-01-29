@@ -15,7 +15,7 @@ netG_A:
   input_nc: 1
   output_nc: 1
   ngf: 64
-  vit_name: 'Res-ViT-B_16'
+  vit_name: 'Res-ViT-B_16' # 'Res-ViT-B_16'
   fine_size: 256
   use_dropout: False
   init_type: 'normal'
@@ -26,7 +26,7 @@ netG_B:
   input_nc: 1
   output_nc: 1
   ngf: 64
-  vit_name: 'Res-ViT-B_16'
+  vit_name: 'Res-ViT-B_16' # 'Res-ViT-B_16'
   fine_size: 256
   use_dropout: False
   init_type: 'normal'
@@ -51,4 +51,4 @@ netD_B:
 
 params: # Other params
   pool_size: 0
-  lambda_l1: 100 # 튜닝 # 20 50 100 150
+  lambda_l1: 150 # 튜닝 # 20 50 100 150

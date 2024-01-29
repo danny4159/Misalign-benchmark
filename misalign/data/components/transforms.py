@@ -11,11 +11,45 @@ import monai
 from monai.utils.type_conversion import convert_to_tensor
 import torch
 import torchvision.transforms.functional as F
+import torch.nn.functional as nnF
 
 import torchio as tio
 import math
 import random
 from scipy.fft import fftn, ifftn, fftshift, ifftshift
+
+def padding_target_size(tensorA, tensorB, min_size=(256,256), pad_value=-1): #TODO: 수정. adaconv만을 위한것.580,380 -> 592,384 (16배수) 원래 256,256
+    """
+    Pad and crop the image tensors to the minimum size with padding value.
+    If the image size is less than min_size, pad it to min_size.
+    If padding needs to be odd, add the extra padding to the top and left.
+
+    Args:
+        tensorA (Tensor): Image to be processed.
+        tensorB (Tensor): Second Image to be processed.
+        min_size (int): Minimum size to pad and crop the image.
+        pad_value (float): Value to use for padding.
+
+    Returns:
+        Tensor: Processed images.
+    """
+    if isinstance(min_size, int):
+        min_size = (min_size, min_size)
+
+    _, h, w = tensorA.shape
+
+    # Calculate padding
+    pad_top = (min_size[0] - h + 1) // 2 if h < min_size[0] else 0
+    pad_bottom = (min_size[0] - h) // 2 if h < min_size[0] else 0
+    pad_left = (min_size[1] - w + 1) // 2 if w < min_size[1] else 0
+    pad_right = (min_size[1] - w) // 2 if w < min_size[1] else 0
+
+    # Apply padding
+    if pad_top != 0 or pad_left != 0:
+        tensorA = nnF.pad(tensorA, (pad_left, pad_right, pad_top, pad_bottom), value=pad_value)
+        tensorB = nnF.pad(tensorB, (pad_left, pad_right, pad_top, pad_bottom), value=pad_value)
+
+    return tensorA, tensorB
 
 def random_crop(tensorA, tensorB, output_size=(128,128)):
     """
@@ -38,16 +72,45 @@ def random_crop(tensorA, tensorB, output_size=(128,128)):
     assert len(tensorB.shape) == 3, 'Input tensor B must have 3 dimensions (C, H, W)'
 
     _, h, w = tensorA.shape
-
+    
     # Calculate the top left corner of the random crop
-    top = torch.randint(0, h - output_size[0] + 1, size=(1,)).item()
-    left = torch.randint(0, w - output_size[1] + 1, size=(1,)).item()
+    top = torch.randint(0, h - output_size[0] + 1, size=(1,)).item() if h > output_size[0] else 0
+    left = torch.randint(0, w - output_size[1] + 1, size=(1,)).item() if w > output_size[1] else 0
+    # top = torch.randint(0, h - output_size[0] + 1, size=(1,)).item()
+    # left = torch.randint(0, w - output_size[1] + 1, size=(1,)).item()
 
     # Perform the crop
     tensorA = F.crop(tensorA, top, left, output_size[0], output_size[1])
     tensorB = F.crop(tensorB, top, left, output_size[0], output_size[1])
     
     
+    return tensorA, tensorB
+
+def even_crop(tensorA, tensorB, target_size):
+    """
+    Crop the image to the target size evenly from all sides.
+
+    Args:
+        tensorA (Tensor): Image to be cropped.
+        tensorB (Tensor): Second Image to be cropped.
+        target_size (tuple): Desired output size (height, width).
+
+    Returns:
+        Tensor: Cropped images.
+    """
+    _, h, w = tensorA.shape
+    new_h, new_w = target_size
+
+    # Calculate cropping dimensions
+    top = (h - new_h) // 2
+    bottom = h - new_h - top
+    left = (w - new_w) // 2
+    right = w - new_w - left
+
+    # Crop images
+    tensorA = F.crop(tensorA, top, left, new_h, new_w)
+    tensorB = F.crop(tensorB, top, left, new_h, new_w)
+
     return tensorA, tensorB
 
 log = utils.get_pylogger(__name__)
@@ -613,11 +676,12 @@ class dataset_SynthRAD_MR_CT_Pelvis_RAM(Dataset):
     
 #원래코드
 class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
-    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False,*args, **kwargs):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False, padding: bool = False, *args, **kwargs):
         super().__init__()
         self.rand_crop = rand_crop
         self.data_dir = data_dir
         self.reverse = reverse
+        self.padding = padding
 
         os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
         
@@ -663,13 +727,18 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         # Create a dictionary for the data
         data_dict = {"A": A, "B": B}
 
-        # Apply the random flipping
-        data_dict = self.aug_func(data_dict)
+        # TODO: auf func 원래 위치
 
         A = data_dict["A"]
         A = convert_to_tensor(A)
         B = data_dict["B"]
         B = convert_to_tensor(B)
+
+        if self.padding:
+            A, B = padding_target_size(A, B)
+
+        # Apply the random flipping
+        data_dict = self.aug_func(data_dict)
 
         if self.rand_crop:
             # A, B = random_crop(A, B, (320,192)) # 이게 지금까지 계속 써왔던 것
@@ -677,7 +746,10 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
             # A, B = random_crop(A, B, (416,256)) # 이건 weight 맞출때
         else:
             _, h, w = A.shape
-            A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
+            # A, B = even_crop(A, B, (256,256)) # under nearest multiple of 14 # TODO: resvit돌리기위한 코드
+            A, B = even_crop(A, B, (h//16*16,w//16*16)) # under nearest multiple of 16 # adaconv랑 다른것들도 다 이거
+            # A, B = even_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of 16 
+            # A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
 
         if self.reverse:
             return B, A

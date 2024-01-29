@@ -1,0 +1,38 @@
+###################################################
+# 주의
+# 이건 train, val, test셋 크기 통일이 필요
+# 그래서 SynthRAD_MR_CT_Pelvis_DataModule에서 train val test 모두에 (580,380) padding만 적용 -> val,test crop되는걸 방지위해
+###################################################
+
+_target_: misalign.models.adaconv_module.AdaConvModule
+
+name: adaconv
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+  betas: [0.5, 0.999]
+  weight_decay: 0.00005
+
+netG_A:
+  _target_: misalign.models.components.networks_adaconv.define_G
+  netG: 'adaconv'
+  # input_nc: 1
+  # output_nc: 1
+  demodulate: true
+  requires_grad: true
+
+netG_B:
+  _target_: misalign.models.components.networks_adaconv.define_G
+  netG: 'adaconv'
+  # input_nc: 1
+  # output_nc: 1
+  demodulate: true
+  requires_grad: true
+
+params: # Other params
+  # lambda_style: 1
+  # lambda_cycle_a: 1
+  # lambda_cycle_b: 1
+  # lambda_sc: 0.1

@@ -31,4 +31,4 @@ params: # Other params
   lambda_style: 1
   lambda_cycle_a: 1
   lambda_cycle_b: 1
-  lambda_cycle_style: 1
+  lambda_sc: 0.1

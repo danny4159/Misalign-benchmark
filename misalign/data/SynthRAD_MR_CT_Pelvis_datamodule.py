@@ -84,27 +84,42 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             # target_file = os.path.join(self.data_dir, phase, 'data.mat')
             target_file = os.path.join(self.data_dir, phase) #TODO: nifti가 있는지 확인
             
-            if phase == 'train': # misalign only for training data
+            if phase == 'train': # misalign only for training data # TODO: 데이터셋수정
+                # write_dir = os.path.join(self.data_dir, phase, 'Alignformer_train_lq_to_ref.h5') 
+                # write_dir = os.path.join(self.data_dir, 'val', 'prepared_data_0_0_0_0_0_ver3_final_only_one_patient.h5') 
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_0_0_0_0_0_ver3_final.h5')
                 mis_x, mis_y, Rot_z, M_prob, D_prob = self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob
-                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_0_0_0_0_0_ver3_final_justForDummy.h5') # TODO: 데이터셋수정
-                # write_dir = os.path.join(self.data_dir, phase, 'mr_ct_alignformer.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 데이터셋수정
-                # write_dir = os.path.join(self.data_dir, phase, 'mr_ct_trainset_alignformer_originalCT.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 데이터셋수정
-                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_ver3_final.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정
-                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_OnlyValMask_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정
+                # write_dir = os.path.join(self.data_dir, phase, 'Alignformer_train_lq_to_sr.h5') 
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_0_0_0_0_0_ver3_final_justForDummy.h5') 
+                # write_dir = os.path.join(self.data_dir, phase, 'mr_ct_alignformer.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) 
+                # write_dir = os.path.join(self.data_dir, phase, 'mr_ct_trainset_alignformer_originalCT.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob))
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_ver3_final.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # Histogram matching 적용한 것
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_OnlyValMask_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # ISMRM dataset
                 self.train_dir = write_dir
             
-            elif phase == 'val' or 'test': # no misalignment for validation and test data
+            elif phase == 'val': # no misalignment for validation and test data
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_0_0_0_0_0_ver3_final_only_one_patient.h5')
+                # write_dir = os.path.join(self.data_dir, phase, 'Alignformer_val_lq_to_ref.h5')
+                # write_dir = os.path.join(self.data_dir, 'val', 'prepared_data_0_0_0_0_0_ver3_final_only_one_patient.h5') 
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_0_0_0_0_0_ver3_final.h5')
+                # write_dir = os.path.join(self.data_dir, phase, 'Alignformer_val_lq_to_sr.h5')
                 # mis_x, mis_y, Rot_z, M_prob, D_prob = 0.0, 0.0, 0.0, 0.0, 0.0
-                mis_x, mis_y, Rot_z, M_prob, D_prob = 0, 0, 0, 0, 0
-                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_ver3_final_justForDummy.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 데이터셋수정 
-                # write_dir = os.path.join(self.data_dir, phase, 'mr_ct_alignformer.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 데이터셋수정 
-                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_ver3_final.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정 
-                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_OnlyValMask_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) # TODO: 수정 
-                if phase == 'val':
-                    self.val_dir = write_dir
-                elif phase == 'test':
-                    self.test_dir = write_dir
+                # mis_x, mis_y, Rot_z, M_prob, D_prob = 0, 0, 0, 0, 0
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_ver3_final_justForDummy.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob))
+                # write_dir = os.path.join(self.data_dir, phase, 'mr_ct_alignformer.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) 
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_ver3_final.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) 
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_OnlyValMask_Norm.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob))
+                self.val_dir = write_dir
                 
+            elif phase == 'test':
+                # write_dir = os.path.join(self.data_dir, phase, 'Alignformer_test_lq_to_ref.h5')
+                # write_dir = os.path.join(self.data_dir, phase, 'Alignformer_test_lq_to_sr.h5')
+                # mis_x, mis_y, Rot_z, M_prob, D_prob = 0, 0, 0, 0, 0
+                # write_dir = os.path.join(self.data_dir, phase, 'prepared_data_{}_{}_{}_{}_{}_ver3_final.h5'.format(mis_x,mis_y,Rot_z,M_prob,D_prob)) 
+                # write_dir = os.path.join(self.data_dir, 'train', 'prepared_data_0_0_0_0_0_ver3_final.h5')
+                write_dir = os.path.join(self.data_dir, phase, 'prepared_data_0_0_0_0_0_ver3_final.h5')
+                self.test_dir = write_dir
+
             if os.path.exists(write_dir):
                 print('path exists for {}'.format(write_dir))
             else:
@@ -120,9 +135,13 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             stage (str, optional): The stage for which to setup the data. Can be None, 'fit' or 'test'. Defaults to None.
         """
         # load and split datasets only if not loaded already
-        self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, rand_crop=self.hparams.rand_crop) # Use flip and crop augmentation for training data
-        self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, rand_crop=self.hparams.rand_crop)
-        self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, rand_crop=self.hparams.rand_crop)
+        # self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, padding=self.hparams.padding, rand_crop=self.hparams.rand_crop) # Use flip and crop augmentation for training data
+        # self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
+        # self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
+        # # adaconv위해서 잠깐
+        self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, padding=self.hparams.padding) # Use flip and crop augmentation for training data
+        self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
+        self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
      
 
     def train_dataloader(self):

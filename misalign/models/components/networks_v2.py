@@ -288,7 +288,7 @@ def define_G(
     opt=None,
     fuse=True,
     shared_decoder=False,
-    vit_name='Res-ViT-B_16',
+    vit_name='Res-ViT-B_14',
     fine_size=192,
 ):
     """Create a generator

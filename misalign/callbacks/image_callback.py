@@ -14,7 +14,7 @@ import os
 
 log = utils.get_pylogger(__name__)
 
-class ImageLoggingCallback(Callback):
+class ImageLoggingCallback(Callback): #TODO: model_step의 결과 원래 4개인데, adaconv는 6개로
     def __init__(
         self,
         val_batch_idx: List[int] = [10, 20, 30, 40, 50],
@@ -48,8 +48,8 @@ class ImageLoggingCallback(Callback):
         ):
             res = pl_module.model_step(batch)
 
-            if len(res) == 4:
-                a, b, preds_a, preds_b = res
+            if len(res) >= 4:
+                a, b, preds_a, preds_b = res[:4]
                 self.ngrid = 4
                 # if size of a is bigger than centercrop, then center crop
                 # if a.shape[-1] > self.center_crop:
@@ -125,9 +125,9 @@ class ImageLoggingCallback(Callback):
             self.log_test and batch_idx in self.tst_batch_idx
         ):  # log every indexes for slice number in test set
             res = pl_module.model_step(batch)
-            if len(res) == 4:
+            if len(res) >= 4:
                 self.ngrid = 4
-                a, b, preds_a, preds_b = res
+                a, b, preds_a, preds_b = res[:4]
 
                 # if size of a is bigger than centercrop, then center crop
                 # if a.shape[-1] > self.center_crop:
@@ -274,21 +274,19 @@ class ImageSavingCallback(Callback):
                 code_root_dir = os.path.dirname(head)
                 break
             head, _= os.path.split(head)
-        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'prepared_data_0_0_0_0_0_OnlyValMask_Norm.h5') # TODO: 수정. 데이터셋 이름 바뀌면.
+        # data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'train', 'prepared_data_0_0_0_0_0_ver3_final.h5') # TODO: 데이터셋수정. 데이터셋 이름 바뀌면.
+        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'prepared_data_0_0_0_0_0_ver3_final.h5') # TODO: 데이터셋수정. 데이터셋 이름 바뀌면.
         # h5 파일에서 MR 그룹의 모든 데이터셋을 리스트로 불러오기
         with h5py.File(data_path, 'r') as file:
             mr_group = file['MR']
-            dataset_list = [mr_group[key][()] for key in mr_group.keys()]
-        # dataset_list의 각 데이터셋에서 3번째 channel을 self.img_a에 추가
-        for dataset in dataset_list:
-            self.subject_slice_num.append(dataset.shape[2])  # 3번째 channel
-
+            self.dataset_list = [key for key in mr_group.keys()]  # 데이터셋 이름을 리스트로 저장
+            self.subject_slice_num = [mr_group[key].shape[2] for key in self.dataset_list]  # slice number를 리스트로 저장
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
 
         res = pl_module.model_step(batch)
-        if len(res) == 4:
-            a, b, preds_a, preds_b = res
+        if len(res) >= 4:
+            a, b, preds_a, preds_b = res[:4]
 
             # # if size of a is bigger than centercrop, then center crop
             # if a.shape[-1] > self.center_crop:
@@ -322,7 +320,8 @@ class ImageSavingCallback(Callback):
                     b_nii,
                     preds_a_nii,
                     preds_b_nii,
-                    subject_number=self.subject_number,
+                    subject_number=self.dataset_list[0], # 환자이름으로저장
+                    # subject_number=self.subject_number, # original
                     folder_path=self.save_folder_name,
                 )
 
@@ -331,7 +330,8 @@ class ImageSavingCallback(Callback):
                 self.img_b = []
                 self.img_preds_a = []
                 self.img_preds_b = []
-                self.subject_number += 1
+                self.dataset_list.pop(0)
+                # self.subject_number += 1 # # original
                 self.subject_slice_num.pop(0)
                                
 
@@ -371,7 +371,8 @@ class ImageSavingCallback(Callback):
                     b_nii,
                     preds_a_nii,
                     None,
-                    subject_number=self.subject_number,
+                    subject_number=self.dataset_list[0],
+                    # subject_number=self.subject_number,
                     folder_path=self.save_folder_name,
                 )
 
@@ -379,7 +380,8 @@ class ImageSavingCallback(Callback):
                 self.img_a = []
                 self.img_b = []
                 self.img_preds_a = []
-                self.subject_number += 1
+                self.dataset_list.pop(0)
+                # self.subject_number += 1
                 self.subject_slice_num.pop(0)
                 
             if self.subject_number > self.subject_number_length:

@@ -28,10 +28,10 @@ netD_A:
 
 params: # Other params
   pool_size: 0
-  lambda_l1: 20 # L1 loss
-  lambda_style: 20 # Style loss
-  lambda_smooth: 10 # L1-Smooth loss
-  lambda_reg_consistency: 10 # Reg 를 끄는 방법 -> 0
+  lambda_l1: 100 # L1 loss
+  lambda_style: 30 # Style loss
+  lambda_smooth: 100 # L1-Smooth loss
+  lambda_reg_consistency: 120 # Reg 를 끄는 방법 -> 0
   reverse: ${data.reverse} # A->B if False, B->A if True
   flag_GAN: True # Else : no GAN
   flag_register: True # else l1  -> False: Registration 꺼짐
@@ -43,4 +43,4 @@ params: # Other params
   meta_type: LRE # 고정
   flag_use_mask: False # use mask in meta loss # 혹시 시간 되면 True False 의 차이 
   # dir_meta_learning: ${paths.root_dir}/data/IXI/val/prepared_data_0.0_0.0_0.0_0.0_0.0.h5 #TODO: 수정
-  dir_meta_learning: ${paths.root_dir}/data/SynthRAD_MR_CT_Pelvis/val/prepared_data_0_0_0_0_0_OnlyValMask_Norm.h5 #TODO: 수정
+  dir_meta_learning: ${paths.root_dir}/data/SynthRAD_MR_CT_Pelvis/val/prepared_data_0_0_0_0_0_ver3_final.h5 #TODO: 데이터셋수정

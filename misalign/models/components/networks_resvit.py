@@ -115,16 +115,20 @@ class Mlp(nn.Module):
 class Embeddings(nn.Module):
     """Construct the embeddings from patch, position embeddings.
     """
-    def __init__(self, config, img_size, in_channels=3,input_dim=3,old = 1):
+    def __init__(self, config, img_size, in_channels=3,input_dim=3,old = 1, train=False):
         super(Embeddings, self).__init__()
         self.config = config
         img_size = _pair(img_size) # 256 -> 256,256
         grid_size = config.patches["grid"] # 16, 16
+        #TODO:
+        #1. patch size만 1 되게 train일땐 14 * 14 test일땐 n*14 되도록
+        #2. patch_size_real 지우고, positional_encoding만 순간 데이터 크기에 맞게 되도록 바꿔주면
+
         # patch_size: 이미지를 얼마 단위로 나눌것인지
         patch_size = (img_size[0] // 16 // grid_size[0], img_size[1] // 16 // grid_size[1]) # 1, 1  //: 몫 
         patch_size_real = (patch_size[0] * 16, patch_size[1] * 16) # 16, 16
         # n_patches: 이미지가 몇 개의 패치로 나뉘는지
-        n_patches = (img_size[0] // patch_size_real[0]) * (img_size[1] // patch_size_real[1]) # 16 * 16 = 256
+        n_patches = (img_size[0] // patch_size_real[0]) * (img_size[1] // patch_size_real[1])
         in_channels = 1024
         #Learnable patch embeddings
         self.patch_embeddings = Conv2d(in_channels=in_channels, # 1024
@@ -132,7 +136,10 @@ class Embeddings(nn.Module):
                                        kernel_size=patch_size, # 1, 1
                                        stride=patch_size) # 1, 1
         #learnable positional encodings
-        self.positional_encoding = nn.Parameter(torch.zeros(1, n_patches, config.hidden_size)) # 1, 256, 768
+
+        # Case1. Case2할때는 주석처리
+        # self.positional_encoding = nn.Parameter(torch.zeros(1, n_patches, config.hidden_size)) # 1, 256, 768
+        
         self.dropout = Dropout(config.transformer["dropout_rate"])
     
     # 내가 추가한 코드
@@ -146,10 +153,19 @@ class Embeddings(nn.Module):
         return sinusoidal_emb.unsqueeze(0)
 
     def forward(self, x):
-        x = self.patch_embeddings(x) # [1, 1024, 30, 20] -> [1, 768, 30, 20] // 256x256: [2, 1024, 16, 16] -> [2, 768, 16, 16]
+        
+        x = self.patch_embeddings(x) # [1, 1024, 30, 20] -> [1, 768, 30, 20] // 256x256: [2, 1024, 16, 16] -> [2, 768, 16, 16] // 196x196: [1, 1024, 28, 20]->[1, 768, 28, 20]
         x = x.flatten(2) # [1, 768, 600] // [1, 768, 256]
         x = x.transpose(-1, -2) # [1, 600, 768] // [1, 256, 768]
-        embeddings = x + self.positional_encoding
+
+        # Case1: Original encoding
+        # positional_encoding = self.positional_encoding #.to(x.device)
+
+        # Case2: sinusoidal encoding
+        _,i,j = x.shape
+        positional_encoding = self.create_sinusoidal_embeddings(n_patches=i,hidden_size=j).to(x.device)
+
+        embeddings = x + positional_encoding # [1, 560, 768] -> [1, 196, 768]
         embeddings = self.dropout(embeddings)
         return embeddings # // [1, 256, 768]
 
@@ -333,23 +349,24 @@ class ART_block(nn.Module):
     def forward(self, x):
         if self.transformer:
             # downsample
-            down_sampled = self.downsample(x) # [1, 256, 120, 78] -> [1, 1024, 30, 20] // 256x256: [1, 256, 64, 64] -> [1, 1024, 16, 16]
+            down_sampled = self.downsample(x) # [1, 256, 64, 64] -> [1, 1024, 16, 16]
             # embed
-            embedding_output = self.embeddings(down_sampled)
+            embedding_output = self.embeddings(down_sampled) # [1, 256, 768]
             # feed to transformer
-            transformer_out, attn_weights = self.transformer(embedding_output) # [1, 256, 768] -> [1, 256, 768]
+            transformer_out, attn_weights = self.transformer(embedding_output) # [1, 256, 768]
             B, n_patch, hidden = transformer_out.size()  # reshape from (B, n_patch, hidden) to (B, h, w, hidden)
-            h, w = int(np.sqrt(n_patch)), int(np.sqrt(n_patch))
-            transformer_out = transformer_out.permute(0, 2, 1)
-            transformer_out = transformer_out.contiguous().view(B, hidden, h, w)
+            _, _, h, w = down_sampled.shape
+            # h, w = int(np.sqrt(n_patch)), int(np.sqrt(n_patch)) # 16, 16 #TODO: 이거 그냥 위에 down_sampled에서 크기 받아와서 나누도록
+            transformer_out = transformer_out.permute(0, 2, 1) #  [1, 256, 768] -> [1, 768, 256]
+            transformer_out = transformer_out.contiguous().view(B, hidden, h, w) # [1, 768, 16, 16]
             # upsample transformer output
-            transformer_out = self.upsample(transformer_out)
+            transformer_out = self.upsample(transformer_out) # [1, 256, 64, 64]
             # concat transformer output and resnet output
-            x = torch.cat([transformer_out, x], dim=1)
+            x = torch.cat([transformer_out, x], dim=1) # [1, 512, 64, 64]
             # channel compression
-            x = self.cc(x)
+            x = self.cc(x) # [1, 256, 64, 64]
         # residual CNN
-        x = self.residual_cnn(x)
+        x = self.residual_cnn(x) # [1, 256, 64, 64]
         return x
 
 ########Generator############
@@ -440,12 +457,12 @@ class ResViT(nn.Module):
         
     def forward(self, x):
         # Pass input through cnn encoder of ResViT
-        x = self.encoder_1(x)
+        x = self.encoder_1(x) # [1, 1, 434, 308] ->
         x = self.encoder_2(x)
         x = self.encoder_3(x)
 
         #Information Bottleneck
-        x = self.art_1(x)
+        x = self.art_1(x) # [1, 256, 109, 77] -> 
         x = self.art_2(x)
         x = self.art_3(x)
         x = self.art_4(x)
@@ -728,9 +745,72 @@ def get_resvit_l16_config():
 
 
 
+def get_b14_config():
+    """Returns the ViT-B/14 configuration."""
+    config = ml_collections.ConfigDict()
+    config.patches = ml_collections.ConfigDict({'size': (14, 14)})
+    config.hidden_size = 768
+    config.transformer = ml_collections.ConfigDict()
+    config.transformer.mlp_dim = 3072
+    config.transformer.num_heads = 12
+    config.transformer.num_layers = 12
+    config.transformer.attention_dropout_rate = 0.0
+    config.transformer.dropout_rate = 0.1
+
+
+    config.pretrained_path = './model/vit_checkpoint/imagenet21k/ViT-B_14.npz'
+    config.patch_size = 14
+
+    config.activation = 'softmax'
+    return config
+
+def get_resvit_b14_config():
+    """Returns the residual ViT-B/14 configuration."""
+    config = get_b14_config()
+    config.patches.grid = (14, 14)
+    config.name = 'b14'
+
+    config.pretrained_path = './model/vit_checkpoint/imagenet21k/R50+ViT-B_14.npz'
+
+    return config
+
+
+def get_b8_config():
+    """Returns the ViT-B/8 configuration."""
+    config = ml_collections.ConfigDict()
+    config.patches = ml_collections.ConfigDict({'size': (8, 8)})
+    config.hidden_size = 768
+    config.transformer = ml_collections.ConfigDict()
+    config.transformer.mlp_dim = 3072
+    config.transformer.num_heads = 12
+    config.transformer.num_layers = 12
+    config.transformer.attention_dropout_rate = 0.0
+    config.transformer.dropout_rate = 0.1
+
+
+    config.pretrained_path = './model/vit_checkpoint/imagenet21k/ViT-B_8.npz'
+    config.patch_size = 8
+
+    config.activation = 'softmax'
+    return config
+
+def get_resvit_b8_config():
+    """Returns the residual ViT-B/8 configuration."""
+    config = get_b8_config()
+    config.patches.grid = (8, 8)
+    config.name = 'b8'
+
+    config.pretrained_path = './model/vit_checkpoint/imagenet21k/R50+ViT-B_8.npz'
+
+    return config
+
 CONFIGS = {
     'ViT-B_16': get_b16_config(),
     'ViT-L_16': get_l16_config(),
+    'ViT-B-14': get_b14_config(),
+    'ViT-B-8': get_b8_config(),
     'Res-ViT-B_16': get_resvit_b16_config(),
     'Res-ViT-L_16': get_resvit_l16_config(),
+    'Res-ViT-B_14': get_resvit_b14_config(),
+    'Res-ViT-B_8': get_resvit_b8_config(),
 }

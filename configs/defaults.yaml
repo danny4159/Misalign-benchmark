@@ -4,7 +4,7 @@
 # order of defaults determines the order in which configs override each other
 defaults:
   - _self_
-  - data: synthRAD_MR_CT_Pelvis.yaml #TODO: 수정 ixi.yaml / synthRAD_MR_CT_Pelvis.yaml
+  - data: synthRAD_MR_CT_Pelvis.yaml # TODO: 수정 ixi.yaml / synthRAD_MR_CT_Pelvis.yaml
   - model: cgan.yaml
   - callbacks: default.yaml
   - logger: tensorboard.yaml

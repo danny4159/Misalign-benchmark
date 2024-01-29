@@ -126,7 +126,7 @@ class BaseModule(LightningModule):
         # Perform metric
         self.val_psnr_A(real_A, fake_A)
         self.val_ssim_A(real_A, fake_A)
-        self.val_lpips_A(gray2rgb(real_A), gray2rgb(fake_A))
+        self.val_lpips_A(gray2rgb(real_A), gray2rgb(fake_A)) #TODO: 잠깐 수정
 
         self.val_psnr_B(real_B, fake_B)
         self.val_ssim_B(real_B, fake_B)

@@ -7,6 +7,7 @@ from misalign.models.base_module import BaseModule
 from misalign import utils
 from torchvision import models
 from misalign.models.components.contextual_loss import Contextual_Loss # this is the CX loss
+from misalign.models.components.scgan_loss import MINDLoss
 
 log = utils.get_pylogger(__name__)
 
@@ -41,13 +42,13 @@ class DAMModule(BaseModule):
             "conv_4_4": 1.0
         }
 
-        self.style_loss = Contextual_Loss(style_feat_layers)
-
         # loss function
+        self.style_loss = Contextual_Loss(style_feat_layers)
         self.criterionL1 = torch.nn.L1Loss()
+        self.criterionMindFeature = MINDLoss()       
 
 
-    def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_style, lambda_cycle_a, lambda_cycle_b, lambda_cycle_style):
+    def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_style, lambda_cycle_a, lambda_cycle_b, lambda_sc):
         
         ## Cycle loss
         # MR > CT > MR
@@ -64,12 +65,17 @@ class DAMModule(BaseModule):
         loss_style_B = self.style_loss(real_b, fake_b)
         loss_style = (loss_style_A + loss_style_B) * lambda_style
 
-        ## Contextual loss
-        loss_cycle_style_A = self.style_loss(rec_b, real_b)
-        loss_cycle_style_B = self.style_loss(rec_a, real_a)
-        loss_cycle_style = (loss_cycle_style_A + loss_cycle_style_B) * lambda_cycle_style
+        ## Cycle Contextual loss (오히려 성능저하)
+        # loss_cycle_style_A = self.style_loss(rec_b, real_b)
+        # loss_cycle_style_B = self.style_loss(rec_a, real_a)
+        # loss_cycle_style = (loss_cycle_style_A + loss_cycle_style_B) * lambda_cycle_style
 
-        loss_G = loss_style + loss_cycle_A + loss_cycle_B + loss_cycle_style
+        ## MIND feature loss
+        loss_sc_A = self.criterionMindFeature(real_a, fake_b)
+        loss_sc_B = self.criterionMindFeature(real_b, fake_a)
+        loss_sc = (loss_sc_A + loss_sc_B) * lambda_sc
+
+        loss_G = loss_style + loss_cycle_A + loss_cycle_B + loss_sc # + loss_cycle_style
 
         return loss_G
 
@@ -79,7 +85,7 @@ class DAMModule(BaseModule):
         real_a, real_b, fake_a, fake_b = self.model_step(batch)
 
         with optimizer_G.toggle_model():
-            loss_G = self.backward_G(real_a, real_b, fake_a, fake_b, self.params.lambda_style, self.params.lambda_cycle_a, self.params.lambda_cycle_b, self.params.lambda_cycle_style)
+            loss_G = self.backward_G(real_a, real_b, fake_a, fake_b, self.params.lambda_style, self.params.lambda_cycle_a, self.params.lambda_cycle_b, self.params.lambda_sc)
             self.manual_backward(loss_G)
             optimizer_G.step()
             optimizer_G.zero_grad()

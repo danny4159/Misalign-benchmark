@@ -6,6 +6,9 @@ misalign_y: 0
 degree: 0
 motion_prob: 0
 deform_prob: 0
+train_file: 'Alignformer_train_lq_to_ref.h5'
+val_file: 'Alignformer_val_lq_to_ref.h5'
+test_file: 'Alignformer_test_lq_to_ref.h5'
 reverse: False # New
 flip_prob: 0 #.5 #0.5
 rot_prob: 0 #.5 #0.5

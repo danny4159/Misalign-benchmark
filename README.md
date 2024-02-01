@@ -46,14 +46,17 @@ Install other libraries manually using pip and conda.
 
 
 ## Dataset
-Dataset: Grand challenge 'SynthRAD' MR to CT on Pelvis
+#### Dataset 
+Grand challenge 'SynthRAD' MR to CT on Pelvis
 
-Preprocessing
+#### Preprocessing
 MR: N4 correction -> Nyul Histogram Matching -> z-score norm each patient -> -1~1 minmax norm each patient
 CT: 5% 95% percentile clip -> z-score norm whole patient -> -1 ~ 1 minmax norm whole patient
 
-File Format: h5
+#### File Format: 
+h5
 
+#### Dataset download
 https://drive.google.com/drive/folders/19a9VF9TYMyg6TAnOyRokn4d46_Nfhvfa?usp=sharing
 
 Download this preprocessed MR to CT dataset, and insert it into the 'data/SynthRAD_MR_CT_Pelvis' folder.
@@ -69,6 +72,7 @@ python misalign/train.py model='pgan.yaml' trainer.devices=[0] tags='synthRAD_PG
 # Proposed (Meta-learning)
 python misalign/train.py model='proposed_A_to_B.yaml' trainer.devices=[0] tags='synthRAD_Proposed_train'
 ```
+Various other models are implemented as well.
 
 #### Test
 Test phase is automatically executed after the training has been completed. If you want to run the Test phase manually
@@ -83,8 +87,6 @@ python misalign/train.py model='pgan.yaml' trainer.devices=[0] tags='synthRAD_PG
 # Proposed (Meta-learning)
 python misalign/train.py model='proposed_A_to_B.yaml' trainer.devices=[0] tags='synthRAD_Proposed_train' train=False
 ```
-
-Various other models are implemented as well.
 
 
 ## References

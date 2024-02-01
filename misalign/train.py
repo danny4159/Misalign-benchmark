@@ -95,17 +95,13 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     
     if cfg.get("test"):
         log.info("Starting testing!") # TODO: Test 할때 여기 조정하기.
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_adaconv_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Adaconv_content1_contextual5_style1_cycle0_noTanh/runs/2024-01-27_14-20-06/checkpoints/epoch_epoch=053.ckpt"
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_proposed_A_to_B_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Proposed_100_30_100_120_HM_Applied_(HistogramMatching적용된거로해보니까ISMRM보다더성능좋네!)/runs/2023-12-19_06-52-45/checkpoints/epoch_epoch=089.ckpt"
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_DAM_Train_justLowBatch(이게DAM에쓴최종버전)/runs/2023-11-24_06-23-57/checkpoints/epoch_epoch=093.ckpt"
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_pgan_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_PGAN_lv0/runs/2023-10-27_09-12-22/checkpoints/epoch_epoch_095.ckpt"
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_proposed_A_to_B_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Proposed_100_30_100_120_l1WeightOut/runs/2023-11-07_03-25-04/checkpoints/epoch_epoch=098.ckpt" #TODO: test만하는경우 여기에 직접입력하기
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_DAM_Train_cycle1_cycleWithReal/runs/2023-11-22_10-37-27/checkpoints/epoch_epoch=099.ckpt" #TODO: test만하는경우 여기에 직접입력하기
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_DAM_Train_justLowBatch/runs/2023-11-24_06-23-57/checkpoints/epoch_epoch=093.ckpt"
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_pgan_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Alignformer_lq_sr_PGAN_final/runs/2024-01-23_16-24-13/checkpoints/epoch_epoch=087.ckpt"
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Alignformer_lq_sr_DAM_final/runs/2024-01-23_16-24-21/checkpoints/epoch_epoch=093.ckpt"
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_proposed_A_to_B_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Proposed_100_30_100_120_final/runs/2023-11-03_21-27-19/checkpoints/epoch_epoch_092.ckpt"
-        ckpt_path = trainer.checkpoint_callback.best_model_path # train 할땐 켜고 test할땐 끄고
+        
+        # Test만 수행할 시 ckpt_path를 이곳에서 입력.
+        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_adaconv_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Adaconv_content1_contextual5_style1_cycle0_noTanh/runs/2024-01-27_14-20-06/checkpoints/epoch_epoch=079.ckpt"
+        
+        # Train할 시 아래 코드를 활성화. Test시에는 비활성화
+        ckpt_path = trainer.checkpoint_callback.best_model_path 
+        
         if ckpt_path == "":
             log.warning("Best ckpt not found! Using current weights for testing...")
             ckpt_path = None

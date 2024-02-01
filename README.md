@@ -32,8 +32,8 @@ Develop benchmark model for image to image transformation model in medical imagi
 
 ```bash
 # clone project
-git clone git@github.com:KHRyu8985/misalign-benchmark.git
-cd misalign-benchmark
+git clone https://github.com/danny4159/Misalign-benchmark.git
+cd Misalign-benchmark
 
 # Install mamba [if not available]
 conda install mamba -n base -c conda-forge
@@ -42,47 +42,49 @@ conda install mamba -n base -c conda-forge
 mamba env create -f environment.yaml
 ```
 
-## Dataset
-https://drive.google.com/drive/folders/1hOb0TQtz7k5AzzPWUUU-lRHTE9ZS_G2M?usp=sharing
+Install other libraries manually using pip and conda.
 
-Download this preprocessed IXI dataset, and insert it into the 'data' folder.
+
+## Dataset
+Dataset: Grand challenge 'SynthRAD' MR to CT on Pelvis
+
+Preprocessing
+MR: N4 correction -> Nyul Histogram Matching -> z-score norm each patient -> -1~1 minmax norm each patient
+CT: 5% 95% percentile clip -> z-score norm whole patient -> -1 ~ 1 minmax norm whole patient
+
+File Format: h5
+
+https://drive.google.com/drive/folders/19a9VF9TYMyg6TAnOyRokn4d46_Nfhvfa?usp=sharing
+
+Download this preprocessed MR to CT dataset, and insert it into the 'data/SynthRAD_MR_CT_Pelvis' folder.
+
 
 ## How to run
 
-Train model with default configuration
-
+#### Training
 ```bash
-# train on CPU
-python misalign/train.py trainer=cpu
+# PGAN
+python misalign/train.py model='pgan.yaml' trainer.devices=[0] tags='synthRAD_PGAN_train'
 
-# train on GPU
-python misalign/train.py trainer=gpu
+# Proposed (Meta-learning)
+python misalign/train.py model='proposed_A_to_B.yaml' trainer.devices=[0] tags='synthRAD_Proposed_train'
 ```
 
-Train model with chosen experiment configuration from [configs/experiment/](configs/experiment/)
+#### Test
+Test phase is automatically executed after the training has been completed. If you want to run the Test phase manually
 
+1st. In the train.py file, set the ckpt_path for the test execution.
+
+2nd. Run the code
 ```bash
-python misalign/train.py experiment=experiment_name.yaml
+# PGAN
+python misalign/train.py model='pgan.yaml' trainer.devices=[0] tags='synthRAD_PGAN_train' train=False
+
+# Proposed (Meta-learning)
+python misalign/train.py model='proposed_A_to_B.yaml' trainer.devices=[0] tags='synthRAD_Proposed_train' train=False
 ```
 
-You can override any parameter from command line like this
-
-```bash
-python misalign/train.py trainer.max_epochs=20 data.batch_size=64
-```
-
-Running script is in scripts folder
-```bash
-bash scripts/run_misalign.sh 0 0 # run 4 benchmarks for misalign with 0, 0
-```
-
-for example:
-```bash
-python misalign/train_cgan.py data.misalign_x=6 task_name="CycleGAN" tags=["xy60"]  
-# insert misalignment in x direction by stdev of 6 pixels, with task_name and tags (for saving)
-
-python misalign/train_pgan.py data.misalign_x=4 task_name="PixelGAN" tags=["xy40"]  # Same for pGAN
-```
+Various other models are implemented as well.
 
 
 ## References
@@ -90,6 +92,3 @@ python misalign/train_pgan.py data.misalign_x=4 task_name="PixelGAN" tags=["xy40
 ```cite
 1. S. U. Dar, M. Yurt, L. Karacan, A. Erdem, E. Erdem and T. Çukur, "Image Synthesis in Multi-Contrast MRI With Conditional Generative Adversarial Networks," in IEEE Transactions on Medical Imaging, vol. 38, no. 10, pp. 2375-2388, Oct. 2019, doi: 10.1109/TMI.2019.2901750.
 ```
-2. IXI Dataset (Normal): http://brain-development.org/ixi-dataset
-3. BRATS dataset (Abnormalizty): https://sites.google.com/site/braintumorsegmentation/home/brats2015
- 

@@ -120,11 +120,11 @@ class AdaConvModule(BaseModule):
         # Perform metric
         self.val_psnr_A(real_A, fake_A)
         self.val_ssim_A(real_A, fake_A)
-        # self.val_lpips_A(gray2rgb(real_A), gray2rgb(fake_A)) #TODO: 잠깐 수정
+        self.val_lpips_A(gray2rgb(real_A), gray2rgb(fake_A)) #TODO: 잠깐 수정
 
         self.val_psnr_B(real_B, fake_B)
         self.val_ssim_B(real_B, fake_B)
-        # self.val_lpips_B(gray2rgb(real_B), gray2rgb(fake_B))
+        self.val_lpips_B(gray2rgb(real_B), gray2rgb(fake_B))
 
         self.log("val/loss", loss.detach(), prog_bar=True)
         
@@ -135,11 +135,11 @@ class AdaConvModule(BaseModule):
         # Perform metric
         _psnr_A = self.test_psnr_A(real_A, fake_A)
         _ssim_A = self.test_ssim_A(real_A, fake_A)
-        # _lpips_A = self.test_lpips_A(gray2rgb(real_A), gray2rgb(fake_A))
+        _lpips_A = self.test_lpips_A(gray2rgb(real_A), gray2rgb(fake_A))
 
         _psnr_B = self.test_psnr_B(real_B, fake_B)
         _ssim_B = self.test_ssim_B(real_B, fake_B)
-        # _lpips_B = self.test_lpips_B(gray2rgb(real_B), gray2rgb(fake_B))
+        _lpips_B = self.test_lpips_B(gray2rgb(real_B), gray2rgb(fake_B))
 
         self.stats_psnr_A.update(_psnr_A)
         self.stats_psnr_B.update(_psnr_B)
@@ -147,7 +147,7 @@ class AdaConvModule(BaseModule):
         self.stats_ssim_A.update(_ssim_A)
         self.stats_ssim_B.update(_ssim_B)
         
-        # self.stats_lpips_A.update(_lpips_A)
-        # self.stats_lpips_B.update(_lpips_B) 
+        self.stats_lpips_A.update(_lpips_A)
+        self.stats_lpips_B.update(_lpips_B) 
 
         self.log("test/loss", loss.detach(), prog_bar=True)

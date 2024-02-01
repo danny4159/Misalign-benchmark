@@ -14,7 +14,7 @@ import os
 
 log = utils.get_pylogger(__name__)
 
-class ImageLoggingCallback(Callback): #TODO: model_step의 결과 원래 4개인데, adaconv는 6개로
+class ImageLoggingCallback(Callback):
     def __init__(
         self,
         val_batch_idx: List[int] = [10, 20, 30, 40, 50],
@@ -274,8 +274,7 @@ class ImageSavingCallback(Callback):
                 code_root_dir = os.path.dirname(head)
                 break
             head, _= os.path.split(head)
-        # data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'train', 'prepared_data_0_0_0_0_0_ver3_final.h5') # TODO: 데이터셋수정. 데이터셋 이름 바뀌면.
-        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'Alignformer_test_lq_to_ref.h5') # TODO: 데이터셋수정. 데이터셋 이름 바뀌면.
+        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'prepared_data_0_0_0_0_0_ver3_final.h5') # TODO: 데이터셋수정. 테스트할 데이터셋에 따라.
         # h5 파일에서 MR 그룹의 모든 데이터셋을 리스트로 불러오기
         with h5py.File(data_path, 'r') as file:
             mr_group = file['MR']

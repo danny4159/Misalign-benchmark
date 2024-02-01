@@ -18,7 +18,7 @@ import math
 import random
 from scipy.fft import fftn, ifftn, fftshift, ifftshift
 
-def padding_target_size(tensorA, tensorB, min_size=(256,256), pad_value=-1): #TODO: 수정. adaconv만을 위한것.580,380 -> 592,384 (16배수) 원래 256,256
+def padding_target_size(tensorA, tensorB, min_size=(256,256), pad_value=-1): # TODO: Adaconv 쓸 시 수정 adaconv -> min_size=(592,384) (16배수), 원래 256,256 (나머지 다)
     """
     Pad and crop the image tensors to the minimum size with padding value.
     If the image size is less than min_size, pad it to min_size.

@@ -47,7 +47,7 @@ Install other libraries manually using pip and conda.
 
 ## 3. Dataset
 #### Dataset 
-Grand challenge ['SynthRAD 2023'](https://synthrad2023.grand-challenge.org/) Pelvis MR,CT
+Grand challenge ['SynthRAD 2023'](https://synthrad2023.grand-challenge.org/) Pelvis MR, CT
 
 #### Preprocessing
 - MR: 

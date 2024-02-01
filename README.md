@@ -13,7 +13,7 @@ _____________________________________________________________________
 
 </div>
 
-## Description
+## 1. Description
 
 Develop benchmark model for image to image transformation model in medical imaging domain.
 
@@ -26,7 +26,7 @@ Develop benchmark model for image to image transformation model in medical imagi
  tensorboard --logdir logs 
  ``` 
  
-## Installation
+## 2. Installation
 
 #### MAMBA
 
@@ -45,9 +45,9 @@ mamba env create -f environment.yaml
 Install other libraries manually using pip and conda.
 
 
-## Dataset
+## 3. Dataset
 #### Dataset 
-Grand challenge 'SynthRAD' MR to CT on Pelvis
+Grand challenge ['SynthRAD 2023'](https://synthrad2023.grand-challenge.org/) MR, CT on Pelvis
 
 #### Preprocessing
 MR: N4 correction -> Nyul Histogram Matching -> z-score norm each patient -> -1~1 minmax norm each patient
@@ -62,7 +62,7 @@ https://drive.google.com/drive/folders/19a9VF9TYMyg6TAnOyRokn4d46_Nfhvfa?usp=sha
 Download this preprocessed MR to CT dataset, and insert it into the 'data/SynthRAD_MR_CT_Pelvis' folder.
 
 
-## How to run
+## 4. How to run
 
 #### Training
 ```bash
@@ -89,7 +89,7 @@ python misalign/train.py model='proposed_A_to_B.yaml' trainer.devices=[0] tags='
 ```
 
 
-## References
+## 5. References
 
 ```cite
 1. S. U. Dar, M. Yurt, L. Karacan, A. Erdem, E. Erdem and T. Çukur, "Image Synthesis in Multi-Contrast MRI With Conditional Generative Adversarial Networks," in IEEE Transactions on Medical Imaging, vol. 38, no. 10, pp. 2375-2388, Oct. 2019, doi: 10.1109/TMI.2019.2901750.

@@ -47,11 +47,19 @@ Install other libraries manually using pip and conda.
 
 ## 3. Dataset
 #### Dataset 
-Grand challenge ['SynthRAD 2023'](https://synthrad2023.grand-challenge.org/) MR, CT on Pelvis
+Grand challenge ['SynthRAD 2023'](https://synthrad2023.grand-challenge.org/) Pelvis MR,CT
 
 #### Preprocessing
-MR: N4 correction -> Nyul Histogram Matching -> z-score norm each patient -> -1~1 minmax norm each patient
-CT: 5% 95% percentile clip -> z-score norm whole patient -> -1 ~ 1 minmax norm whole patient
+- MR: 
+  - N4 correction 
+  - Nyul Histogram Matching 
+  - z-score norm each patient 
+  - -1~1 minmax norm each patient
+
+- CT: 
+  - 5% 95% percentile clip 
+  - z-score norm whole patient 
+  - -1 ~ 1 minmax norm whole patient
 
 #### File Format: 
 h5

@@ -14,7 +14,7 @@ reverse: False # New
 flip_prob: 0 #.5 #0.5
 rot_prob: 0 #.5 #0.5
 rand_crop: True #False
-batch_size: 10 #10 #4 #30 #16 #12 #2 #1
+batch_size: 4 #10 #4 #30 #16 #12 #2 #1
 num_workers: 3 # 3
 pin_memory: False
 padding: True # 가로, 세로 256으로 padding

@@ -64,7 +64,7 @@ Grand challenge ['SynthRAD 2023'](https://synthrad2023.grand-challenge.org/) Pel
 #### File Format: 
 h5
 
-#### Dataset download
+#### Dataset download (링크 유효기간: ~24.02.14)
 https://drive.google.com/drive/folders/19a9VF9TYMyg6TAnOyRokn4d46_Nfhvfa?usp=sharing
 
 Download this preprocessed MR to CT dataset, and insert it into the 'data/SynthRAD_MR_CT_Pelvis' folder.

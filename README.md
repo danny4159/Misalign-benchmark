@@ -57,7 +57,7 @@ Grand challenge ['SynthRAD 2023'](https://synthrad2023.grand-challenge.org/) Pel
   - -1~1 minmax norm each patient
 
 - CT: 
-  - 5% 95% percentile clip 
+  - 5%, 95% percentile clip 
   - z-score norm whole patient 
   - -1 ~ 1 minmax norm whole patient
 

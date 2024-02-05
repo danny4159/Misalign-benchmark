@@ -274,7 +274,7 @@ class ImageSavingCallback(Callback):
                 code_root_dir = os.path.dirname(head)
                 break
             head, _= os.path.split(head)
-        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'Alignformer_test_lq_to_sr.h5') # TODO: 데이터셋수정. 테스트할 데이터셋에 따라.
+        data_path = os.path.join(code_root_dir, 'data', 'SynthRAD_MR_CT_Pelvis', 'test', 'prepared_data_0_0_0_0_0_ver3_final.h5') # TODO: 데이터셋수정. 테스트할 데이터셋에 따라.
         # h5 파일에서 MR 그룹의 모든 데이터셋을 리스트로 불러오기
         with h5py.File(data_path, 'r') as file:
             mr_group = file['MR']

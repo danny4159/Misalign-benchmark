@@ -96,15 +96,20 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     if cfg.get("test"):
         log.info("Starting testing!") # TODO: Test 할때 여기 조정하기.
         
-        # Test만 수행할 시 ckpt_path를 이곳에서 입력.
-        # ckpt_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_adaconv_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_Adaconv_content1_contextual5_style1_cycle0_noTanh/runs/2024-01-27_14-20-06/checkpoints/epoch_epoch=079.ckpt"
-        
-        # Train할 시 아래 코드를 활성화. Test시에는 비활성화
-        ckpt_path = trainer.checkpoint_callback.best_model_path 
-        
+        if cfg.get("ckpt_path") != None:
+            ckpt_path = cfg.get("ckpt_path")
+        else:
+            ckpt_path = trainer.checkpoint_callback.best_model_path
+            
         if ckpt_path == "":
             log.warning("Best ckpt not found! Using current weights for testing...")
             ckpt_path = None
+        
+        #original code
+        # ckpt_path = trainer.checkpoint_callback.best_model_path
+        # if ckpt_path == "":
+        #     log.warning("Best ckpt not found! Using current weights for testing...")
+        #     ckpt_path = None
         trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
         log.info(f"Best ckpt path: {ckpt_path}")
 

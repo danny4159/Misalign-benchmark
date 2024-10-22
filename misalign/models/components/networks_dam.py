@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.ops.upfirdn2d import upfirdn2d
 
-from .networks_v2 import init_net
+# from .networks_v2 import init_net
 
 def define_G(
     input_nc,
@@ -31,6 +31,7 @@ def define_G(
         )
     else:
         raise NotImplementedError("Generator model name [%s] is not recognized" % netG)
+    from .networks_v2 import init_net
     return init_net(
         net, init_type, init_gain, gpu_ids, initialize_weights=("stylegan2" not in netG)
     )
@@ -79,6 +80,18 @@ class DAModule(nn.Module):
         self.conv6 = ModulatedStyleConv(feat_ch, feat_ch, output_nc, kernel_size=3,
                                 activate=False, demodulate=demodulate)
 
+        # if load_path:
+        #     checkpoint = torch.load(load_path, map_location=lambda storage, loc: storage)
+        #     if 'state_dict' in checkpoint:
+        #         # PyTorch Lightning 형식의 .ckpt 파일
+        #         model_state_dict = checkpoint['state_dict']
+        #         # 모델의 state_dict에 맞게 키 이름을 조정할 수 있습니다.
+        #         adjusted_state_dict = {k.replace('netG_B.', ''): v for k, v in model_state_dict.items()}
+        #         self.load_state_dict(adjusted_state_dict, strict=False)
+        #     else:
+        #         # 일반적인 PyTorch 형식의 .pth 파일
+        #         self.load_state_dict(checkpoint)
+        
         # if load_path:
         #     self.load_state_dict(torch.load(
         #         load_path, map_location=lambda storage, loc: storage)['params_ema'])

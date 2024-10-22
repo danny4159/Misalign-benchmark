@@ -7,7 +7,7 @@ degree: 0
 motion_prob: 0
 deform_prob: 0
 # TODO: 데이터셋 수정
-train_file: 'prepared_data_0_0_0_0_0_ver3_final.h5'
+train_file: 'prepared_data_0_0_0_0.05_0.h5' # epi_mprage.h5 # prepared_data_0_0_0_0_0_ver3_final.h5
 val_file: 'prepared_data_0_0_0_0_0_ver3_final.h5'
 test_file: 'prepared_data_0_0_0_0_0_ver3_final.h5'
 reverse: False # New
@@ -15,6 +15,8 @@ flip_prob: 0 #.5 #0.5
 rot_prob: 0 #.5 #0.5
 rand_crop: True #False
 batch_size: 10 #10 #4 #30 #16 #12 #2 #1
-num_workers: 3 # 3
+num_workers: 4 # 3
 pin_memory: False
 padding: True # 가로, 세로 256으로 padding
+half_val_test: False # Inference for valid and test is divided into half from the original image (for memory issue)
+flag_3d: False

@@ -761,3 +761,93 @@ class dataset_SynthRAD_MR_CT_Pelvis(Dataset):
         patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
         slice_idx = idx - self.cumulative_slice_counts[patient_idx]
         return patient_idx, slice_idx
+    
+
+
+#원래코드
+class dataset_SynthRAD_EPI_MPRAGE_Pelvis(Dataset):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False, padding: bool = False, *args, **kwargs):
+        super().__init__()
+        self.rand_crop = rand_crop
+        self.data_dir = data_dir
+        self.reverse = reverse
+        self.padding = padding
+
+        os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
+        
+        # Each patient has a different number of slices        
+        self.patient_keys = []
+        with h5py.File(self.data_dir, 'r') as file:
+            self.patient_keys = list(file['epi'].keys())
+            self.slice_counts = [file['epi'][key].shape[-1] for key in self.patient_keys]
+            self.cumulative_slice_counts = np.cumsum([0] + self.slice_counts)
+        
+        self.aug_func = Compose(
+            [
+                RandFlipd(keys=["A", "B"], prob=flip_prob, spatial_axis=[0, 1]),
+                RandRotate90d(keys=["A", "B"], prob=rot_prob, spatial_axes=[0, 1]),
+            ]
+        )
+
+    def __len__(self):
+        """Returns the number of samples in the dataset."""
+        return self.cumulative_slice_counts[-1]
+
+
+    def __getitem__(self, idx):
+        """Fetches a sample from the dataset given an index.
+
+        Args:
+            idx (int): The index for the sample to retrieve.
+
+        Returns:
+            Dict[str, torch.Tensor]: A dictionary of tensors representing the samples for A and B.
+        """
+        patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
+        slice_idx = idx - self.cumulative_slice_counts[patient_idx]
+        patient_key = self.patient_keys[patient_idx]
+
+        with h5py.File(self.data_dir, 'r') as file:
+            A = file['epi'][patient_key][..., slice_idx]
+            B = file['mprage'][patient_key][..., slice_idx]
+
+        A = torch.from_numpy(A).unsqueeze(0).float()
+        B = torch.from_numpy(B).unsqueeze(0).float()
+
+        # Create a dictionary for the data
+        data_dict = {"A": A, "B": B}
+
+        # TODO: auf func 원래 위치
+
+        A = data_dict["A"]
+        A = convert_to_tensor(A)
+        B = data_dict["B"]
+        B = convert_to_tensor(B)
+
+        if self.padding:
+            A, B = padding_target_size(A, B)
+
+        # Apply the random flipping
+        data_dict = self.aug_func(data_dict)
+
+        if self.rand_crop:
+            # A, B = random_crop(A, B, (320,192)) # 이게 지금까지 계속 써왔던 것
+            A, B = random_crop(A, B, (256,256)) # resvit 용
+            # A, B = random_crop(A, B, (416,256)) # 이건 weight 맞출때
+        else:
+            _, h, w = A.shape
+            # A, B = even_crop(A, B, (256,256)) # under nearest multiple of 14 # TODO: resvit돌리기위한 코드
+            A, B = even_crop(A, B, (h//16*16,w//16*16)) # under nearest multiple of 16 # adaconv랑 다른것들도 다 이거
+            # A, B = even_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of 16 
+            # A, B = random_crop(A, B, (h//4*4,w//4*4)) # under nearest multiple of four
+
+        if self.reverse:
+            return B, A
+        else:
+            return A, B
+            
+    def get_patient_slice_idx(self, idx):
+        """ 주어진 샘플 인덱스에 대한 환자 인덱스와 슬라이스 인덱스를 반환합니다. """
+        patient_idx = np.searchsorted(self.cumulative_slice_counts, idx+1) - 1
+        slice_idx = idx - self.cumulative_slice_counts[patient_idx]
+        return patient_idx, slice_idx

@@ -2,8 +2,10 @@
 
 ImageLoggingCallback:
   _target_: misalign.callbacks.image_callback.ImageLoggingCallback
-  val_batch_idx: [20,30,35,40,44,65]
-  tst_batch_idx: [15,20,30,40,48,70]
+  # val_batch_idx: [20,30,35,40,44,65]
+  # tst_batch_idx: [15,20,30,40,48,70]
+  val_batch_idx: [60,70,80,90,100,110]
+  tst_batch_idx: [60,70,80,90,100,110]
   center_crop: 192
   every_epoch: 1 # log every 5 epochs
   log_test: True # log test images
@@ -12,6 +14,9 @@ ImageSavingCallback:
   _target_: misalign.callbacks.image_callback.ImageSavingCallback
   center_crop: 256
   subject_number_length: 5
+  test_file: ${data.test_file}
+  half_val_test: ${data.half_val_test}
+  flag_normalize: ${callbacks.custom_image_logging.flag_normalize}
 
 WeightSavingCallback:
  _target_: misalign.callbacks.image_callback.WeightSavingCallback

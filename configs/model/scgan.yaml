@@ -54,4 +54,4 @@ params: # Other params
   pool_size: 0
   lambda_cycle: 100
   lambda_identity: 0
-  lambda_sc: 5
+  lambda_sc: 0.01

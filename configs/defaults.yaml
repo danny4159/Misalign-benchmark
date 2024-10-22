@@ -4,7 +4,7 @@
 # order of defaults determines the order in which configs override each other
 defaults:
   - _self_
-  - data: synthRAD_MR_CT_Pelvis.yaml # TODO: 수정 ixi.yaml / synthRAD_MR_CT_Pelvis.yaml
+  - data: ixi.yaml # TODO: 수정 ixi.yaml / synthRAD_MR_CT_Pelvis.yaml
   - model: cgan.yaml
   - callbacks: default.yaml
   - logger: tensorboard.yaml
@@ -50,7 +50,9 @@ test: True
 # compile model for faster training with pytorch 2.0
 compile: False
 
-# simply provide checkpoint path to resume training
+# simply provide checkpoint path to resume training 
+# Test할 checkpoint path를 명령어에 입력
+# ex. /SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_DAM_Train_HM_dataset_batch2/runs/2023-12-27_16-31-22/checkpoints/epoch_epoch_073.ckpt
 ckpt_path: null
 
 # seed for random number generators in pytorch, numpy and python.random

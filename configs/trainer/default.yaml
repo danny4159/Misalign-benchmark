@@ -11,7 +11,7 @@ devices: 1
 benchmark: True # use torch.backends.cudnn.benchmark
 
 # mixed precision for extra speed-up
-#precision: 16
+precision: 32
 
 # perform a validation loop every N training epochs
 check_val_every_n_epoch: 1

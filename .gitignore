@@ -154,3 +154,8 @@ configs/local/default.yaml
 # Aim logging
 .aim
 Mambaforge-Linux-x86_64.sh
+
+
+*.cpython-39.pyc
+*.nii.gz
+*.txt

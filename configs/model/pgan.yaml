@@ -47,3 +47,10 @@ params: # Other params
   pool_size: 0
   lambda_l1: 20
   lambda_vgg: 20
+  flag_meta_learning: False
+  dir_meta_learning: ${paths.root_dir}/data/IXI/val/prepared_data_0.0_0.0_0.0_0.0_0.0.h5
+  reverse: ${data.reverse}
+  flag_register: False # proposed에선 True
+  flag_meta_use_spatial: True
+  flag_use_mask: False
+  meta_type: LRE

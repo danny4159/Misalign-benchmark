@@ -9,7 +9,7 @@ from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
 from torchvision.datasets import MNIST
 from torchvision.transforms import transforms
 
-from misalign.data.components.transforms import download_process_SynthRAD_MR_CT_Pelvis, dataset_SynthRAD_MR_CT_Pelvis_RAM, dataset_SynthRAD_MR_CT_Pelvis
+from misalign.data.components.transforms import download_process_SynthRAD_MR_CT_Pelvis, dataset_SynthRAD_MR_CT_Pelvis_RAM, dataset_SynthRAD_MR_CT_Pelvis, dataset_SynthRAD_EPI_MPRAGE_Pelvis
 
 class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
     """LightningDataModule for SynthRAD_MR_CT_Pelvis dataset.
@@ -79,35 +79,35 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
     def misalign(self):
         return 'Misalignment x:{}, y:{}, R:{}, M:{}, D:{}'.format(self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob)
 
-    def prepare_data(self):
-        """Prepares the data for usage.
+    # def prepare_data(self):
+    #     """Prepares the data for usage.
 
-        This function is responsible for the misalignment of training data and saving the data to hdf5 format.
-        It doesn't assign any state variables.
-        """
+    #     This function is responsible for the misalignment of training data and saving the data to hdf5 format.
+    #     It doesn't assign any state variables.
+    #     """
         
-        for phase in ['train','val','test']:
-            target_file = os.path.join(self.data_dir, phase) #TODO: nifti가 있는지 확인. 나중에 구현
+    #     for phase in ['train','val','test']:
+    #         target_file = os.path.join(self.data_dir, phase) #TODO: nifti가 있는지 확인. 나중에 구현
             
-            if phase == 'train': # misalign only for training data # TODO: 데이터셋수정
-                write_dir = os.path.join(self.data_dir, phase, self.train_file)
-                mis_x, mis_y, Rot_z, M_prob, D_prob = self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob
-                self.train_dir = write_dir
+    #         if phase == 'train': # misalign only for training data # TODO: 데이터셋수정
+    #             write_dir = os.path.join(self.data_dir, phase, self.train_file)
+    #             mis_x, mis_y, Rot_z, M_prob, D_prob = self.misalign_x, self.misalign_y, self.degree, self.motion_prob, self.deform_prob
+    #             self.train_dir = write_dir
             
-            elif phase == 'val': # no misalignment for validation and test data
-                write_dir = os.path.join(self.data_dir, phase, self.val_file)
-                self.val_dir = write_dir
+    #         elif phase == 'val': # no misalignment for validation and test data
+    #             write_dir = os.path.join(self.data_dir, phase, self.val_file)
+    #             self.val_dir = write_dir
                 
-            elif phase == 'test':
-                write_dir = os.path.join(self.data_dir, phase, self.test_file)
-                self.test_dir = write_dir
+    #         elif phase == 'test':
+    #             write_dir = os.path.join(self.data_dir, phase, self.test_file)
+    #             self.test_dir = write_dir
 
-            if os.path.exists(write_dir):
-                print('path exists for {}'.format(write_dir))
-            else:
-                download_process_SynthRAD_MR_CT_Pelvis(target_file, write_dir, mis_x, mis_y, Rot_z, M_prob, D_prob) # TODO: 일단 나중에 구현. h5만들어놓음.
+    #         if os.path.exists(write_dir):
+    #             print('path exists for {}'.format(write_dir))
+    #         else:
+    #             download_process_SynthRAD_MR_CT_Pelvis(target_file, write_dir, mis_x, mis_y, Rot_z, M_prob, D_prob) # TODO: 일단 나중에 구현. h5만들어놓음.
         
-        
+    
     def setup(self, stage: Optional[str] = None):
         """Sets up the datasets.
 
@@ -117,15 +117,62 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
             stage (str, optional): The stage for which to setup the data. Can be None, 'fit' or 'test'. Defaults to None.
         """
         # load and split datasets only if not loaded already
+        self.train_dir = os.path.join(self.data_dir, 'train', self.train_file)
+        self.val_dir = os.path.join(self.data_dir, 'val', self.val_file)
+        self.test_dir = os.path.join(self.data_dir, 'test', self.test_file)
+
         # TODO: Adaconv 쓸 시 수정
-        # adaconv 말고 나머지 다 이거 
-        self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, padding=self.hparams.padding, rand_crop=self.hparams.rand_crop) # Use flip and crop augmentation for training data
-        self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
-        self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
-        # # adaconv 할때 이거
-        # self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, padding=self.hparams.padding) # Use flip and crop augmentation for training data
-        # self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
-        # self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
+        # adaconv 말고 나머지 다 이거
+        self.data_train = dataset_SynthRAD_MR_CT_Pelvis(
+        # self.data_train = dataset_SynthRAD_EPI_MPRAGE_Pelvis(
+            # data_dir='/SSD5_8TB/Daniel/RegistFormer/data/SynthRAD_MR_CT_Pelvis/train/prepared_data_0_0_0_0_0_ver3_final.h5',
+            self.train_dir,
+            reverse=self.hparams.reverse,
+            flip_prob=self.hparams.flip_prob,
+            rot_prob=self.hparams.rot_prob,
+            padding=self.hparams.padding,
+            rand_crop=self.hparams.rand_crop,
+        )  # Use flip and crop augmentation for training data
+        self.data_val = dataset_SynthRAD_MR_CT_Pelvis(
+        # self.data_val = dataset_SynthRAD_EPI_MPRAGE_Pelvis(
+            # data_dir='/SSD5_8TB/Daniel/RegistFormer/data/SynthRAD_MR_CT_Pelvis/val/prepared_data_0_0_0_0_0_ver3_final.h5',
+            self.val_dir,
+            reverse=self.hparams.reverse,
+            flip_prob=0.0,
+            rot_prob=0.0,
+            padding=self.hparams.padding,
+            # rand_crop=self.hparams.rand_crop,
+        )
+        self.data_test = dataset_SynthRAD_MR_CT_Pelvis(
+        # self.data_test = dataset_SynthRAD_EPI_MPRAGE_Pelvis(
+            # data_dir='/SSD5_8TB/Daniel/RegistFormer/data/SynthRAD_MR_CT_Pelvis/test/prepared_data_0_0_0_0_0_ver3_final.h5',
+            self.test_dir,            
+            # self.test_dir,S
+            reverse=self.hparams.reverse,
+            flip_prob=0.0,
+            rot_prob=0.0,
+            padding=self.hparams.padding,
+            # rand_crop=self.hparams.rand_crop,
+        )
+
+    # def setup(self, stage: Optional[str] = None):
+    #     """Sets up the datasets.
+
+    #     This function is responsible for loading the data and assigning the datasets.
+
+    #     Args:
+    #         stage (str, optional): The stage for which to setup the data. Can be None, 'fit' or 'test'. Defaults to None.
+    #     """
+    #     # load and split datasets only if not loaded already
+    #     # TODO: Adaconv 쓸 시 수정
+    #     # adaconv 말고 나머지 다 이거 
+    #     self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, padding=self.hparams.padding, rand_crop=self.hparams.rand_crop) # Use flip and crop augmentation for training data
+    #     self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
+    #     self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
+    #     # # adaconv 할때 이거
+    #     # self.data_train = dataset_SynthRAD_MR_CT_Pelvis(self.train_dir, reverse= self.hparams.reverse, flip_prob=self.hparams.flip_prob, rot_prob=self.hparams.rot_prob, padding=self.hparams.padding) # Use flip and crop augmentation for training data
+    #     # self.data_val = dataset_SynthRAD_MR_CT_Pelvis(self.val_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
+    #     # self.data_test = dataset_SynthRAD_MR_CT_Pelvis(self.test_dir, reverse= self.hparams.reverse, flip_prob=0.0, rot_prob=0.0, padding=self.hparams.padding)
      
 
     def train_dataloader(self):
@@ -273,5 +320,5 @@ class SynthRAD_MR_CT_Pelvis_DataModule(LightningDataModule):
 
 if __name__ == "__main__":
     _ = SynthRAD_MR_CT_Pelvis_DataModule('/SSD3_8TB/Daniel/13_misalign_proposed_final/Misalign-benchmark/data/SynthRAD_MR_CT_Pelvis') #TODO: 수정 경로 맞게
-    _.prepare_data()
+    # _.prepare_data()
     _.setup()

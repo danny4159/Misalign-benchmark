@@ -156,6 +156,14 @@ class BaseModule(LightningModule):
             metrics.reset()
 
     def test_step(self, batch: Any, batch_idx: int):
+        # if batch_idx == 0:
+        #     # 가중치 저장 경로 지정
+        #     save_path = "/SSD3_8TB/Daniel/13_misalign_proposed_final/logs/Model_dam_Data_SynthRAD_MR_CT_Pelvis_Misalign_X0_Y0_R0_M0_D0/synthRAD_DAM_Train_HM_dataset_batch2/runs/2023-12-27_16-31-22/checkpoints/model_weight_A.pt"
+        #     # netG_B의 state_dict 저장
+        #     torch.save(self.netG_A.state_dict(), save_path)
+        #     print(f"Saved netG_B weights to {save_path}")
+
+
         real_A, real_B, fake_A, fake_B = self.model_step(batch)
 
         loss = (F.l1_loss(real_A, fake_A) + F.l1_loss(real_B, fake_B)) / 2

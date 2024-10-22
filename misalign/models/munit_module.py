@@ -4,14 +4,15 @@ import itertools
 import torch
 from misalign.models.components.perceptual import PerceptualLoss
 from misalign.models.components.networks import GANLoss, ImagePool
-from misalign.models.base_module import BaseModule
+from misalign.models.base_module_for_fid import BaseModule
+# from misalign.models.base_module import BaseModule # TODO: FID 평가위해 잠깐 바꾼거
 from misalign import utils
 from misalign.models.components.contextual_loss import Contextual_Loss
 
 log = utils.get_pylogger(__name__)
 
 gray2rgb = lambda x : torch.cat((x, x, x), dim=1)
-class MunitModule(BaseModule):
+class MunitModule(BaseModule): # FID 평가위해 잠깐 바꾼거
     def __init__(
         self,
         netG_A: torch.nn.Module,

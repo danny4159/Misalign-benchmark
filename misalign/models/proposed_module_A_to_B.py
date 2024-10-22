@@ -157,8 +157,8 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
             loss_style_B = self.style_loss(reg_fake_b, real_b)
 
         if weight is not None:
-            # loss_style_B = torch.mean(loss_style_B * weight_batch)  #TODO: 기존코드. 내가한번빼봄.
-            loss_style_B = torch.mean(loss_style_B)
+            loss_style_B = torch.mean(loss_style_B * weight_batch)  #TODO: 기존코드. 내가한번빼봄.
+            # loss_style_B = torch.mean(loss_style_B)
         else:
             loss_style_B = torch.mean(loss_style_B)
 
@@ -194,19 +194,19 @@ class ProposedModule_A_to_B(BaseModule_A_to_B):
                 )
 
             _loss = self.criterionL1(real_b, fake_b)
-            loss = torch.mean(_loss * weight)
-            meta_opt.step(loss) #TODO: 이게 weight 학습에 어떤 영향을 주는지 사실 잘 모르겠어.
+            loss = torch.mean(_loss * weight) # weight가 어떻게 변해야 meta_model의 loss가 더 줄어드는지 meta_model의 파라미터를 학습하는것 ?
+            meta_opt.step(loss)
 
             meta_val_loss = self.criterionL1(
                 (meta_real_b + 1) * mask, (meta_model(meta_real_a) + 1) * mask
             )
             meta_val_loss = torch.mean(meta_val_loss)
 
-            eps_grad = torch.autograd.grad(meta_val_loss, weight)[ #아 이런씩으로 학습시킬수도 있구나?
-                0
-            ].detach()  # Gradient
+            eps_grad = torch.autograd.grad(meta_val_loss, weight)[ # weight의 gradient를 구하는것. 
+                0                                                  # 양의 gradient는 해당 픽셀의 weight를 증가시켜야 손실이 감소됨.
+            ].detach()  # Gradient                                 # 음의 gradient는 해당 픽셀의 weight를 감소시켜야 손실이 감소됨.
 
-        w_tilde = torch.clamp(-eps_grad, min=0)
+        w_tilde = torch.clamp(-eps_grad, min=0) # 음수시켜서 0이하값은 0이 되도록
         l1_norm = torch.sum(w_tilde)
         if l1_norm != 0:
             w_b = w_tilde / l1_norm

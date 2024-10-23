@@ -51,7 +51,7 @@ class PixelGANModule(BaseModule):
         # loss function
         self.no_lsgan = False
         self.criterionGAN = GANLoss(use_lsgan=not self.no_lsgan)
-        self.criterionL1 = torch.nn.L1Loss()
+        self.criterionL1 = torch.nn.L1Loss(reduction="none")
 
         # Image Pool
         self.fake_A_pool = ImagePool(params.pool_size)
@@ -123,7 +123,8 @@ class PixelGANModule(BaseModule):
             loss_G_B = torch.mean(loss_G_B)
 
         loss_GAN = (loss_G_A + loss_G_B) * 0.5
-        loss_G =+ loss_GAN
+        self.log("loss_GAN", loss_GAN.detach(), prog_bar=True)  # GAN loss 로그 추가
+        loss_G = loss_G + loss_GAN
 
         # G(A) = B
         loss_L1_A = self.criterionL1(fake_a, real_a) * lambda_l1
@@ -141,14 +142,16 @@ class PixelGANModule(BaseModule):
         self.check_nan(loss_L1_B, "L1 Loss B") 
 
         loss_L1 = (loss_L1_A + loss_L1_B) * 0.5
-        loss_G =+ loss_L1
+        self.log("loss_L1", loss_L1.detach(), prog_bar=True)  # L1 loss 로그 추가
+        loss_G = loss_G + loss_L1
 
         # Perceptual Loss
-        VGG_real_A = self.vgg(real_a.expand([int(real_a.size()[0]),3,int(real_a.size()[2]),int(real_a.size()[3])]))[0]
+        # [128,64,64]로 batch차원이 융합돼있음. meta weight batch를 그냥 multiple. 그럼 브로드캐스트돼서 해당 배치가 얼마나 유의미한지에 따라 반영됨
+        VGG_real_A = self.vgg(real_a.expand([int(real_a.size()[0]),3,int(real_a.size()[2]),int(real_a.size()[3])]))[0] 
         VGG_fake_A = self.vgg(fake_a.expand([int(real_a.size()[0]),3,int(real_a.size()[2]),int(real_a.size()[3])]))[0]
         VGG_loss_A = self.criterionL1(VGG_fake_A,VGG_real_A) * lambda_vgg
         if weight_b is not None:
-            VGG_loss_A = torch.mean(VGG_loss_A * weight_spatial_b)
+            VGG_loss_A = torch.mean(VGG_loss_A * weight_batch_b)
         else:
             VGG_loss_A = torch.mean(VGG_loss_A)
         self.check_nan(VGG_loss_A, "VGG Loss A")
@@ -157,13 +160,14 @@ class PixelGANModule(BaseModule):
         VGG_fake_B = self.vgg(fake_b.expand([int(real_b.size()[0]),3,int(real_b.size()[2]),int(real_b.size()[3])]))[0]
         VGG_loss_B = self.criterionL1(VGG_fake_B,VGG_real_B) * lambda_vgg
         if weight_a is not None:
-            VGG_loss_B = torch.mean(VGG_loss_B * weight_spatial_a)
+            VGG_loss_B = torch.mean(VGG_loss_B * weight_batch_a)
         else:
             VGG_loss_B = torch.mean(VGG_loss_B)
         self.check_nan(VGG_loss_B, "VGG Loss B") 
 
         VGG_loss = (VGG_loss_A + VGG_loss_B) * 0.5
-        loss_G =+ VGG_loss
+        self.log("loss_VGG", VGG_loss.detach(), prog_bar=True)  # VGG loss 로그 추가
+        loss_G = loss_G + VGG_loss
 
         return loss_G
     
@@ -174,7 +178,7 @@ class PixelGANModule(BaseModule):
                     raise RuntimeError(f"NaN detected in {model_name} parameter: {name}")
                 if torch.isinf(param).any():
                     raise RuntimeError(f"Inf detected in {model_name} parameter: {name}")
-                print(f"{model_name} parameter: {name} - Min: {param.min().item()}, Max: {param.max().item()}")
+                # print(f"{model_name} parameter: {name} - Min: {param.min().item()}, Max: {param.max().item()}")
 
     def determine_weight_LRE_For_A(self, real_a, real_b, meta_real_a, meta_real_b, mask=None):
         """
@@ -196,6 +200,9 @@ class PixelGANModule(BaseModule):
             self.check_model_weights(meta_model, "meta_model_A")
 
             fake_b = meta_model(real_a)
+            # for name, param in meta_model.named_parameters():
+            #     print(f"{name}: min={param.min().item()}, max={param.max().item()}")
+            # print("fake min: ", fake_b.min(), " fake max: ",fake_b.max(), " fake mean: ", fake_b.mean())
             self.check_nan(fake_b, "fake_b after meta_model(real_a)")  # NaN 체크
 
             # Register the fake_b to real_b
@@ -215,6 +222,7 @@ class PixelGANModule(BaseModule):
                 )
 
             _loss = self.criterionL1(real_b, fake_b)
+            
             self.check_nan(_loss, "L1 Loss between real_b and fake_b")  # NaN 체크
             loss = torch.mean(_loss * weight) # weight가 어떻게 변해야 meta_model의 loss가 더 줄어드는지 meta_model의 파라미터를 학습하는것 ?
             self.check_nan(loss, "Weighted loss")  # NaN 체크
@@ -223,15 +231,26 @@ class PixelGANModule(BaseModule):
             meta_val_loss = self.criterionL1(
                 (meta_real_b + 1) * mask, (meta_model(meta_real_a) + 1) * mask
             )
+            
             self.check_nan(meta_val_loss, "meta_val_loss")  # NaN 체크
             meta_val_loss = torch.mean(meta_val_loss)
             self.check_nan(meta_val_loss, "Mean meta_val_loss")  # NaN 체크
+            # print("meta_val_loss:", meta_val_loss)
+            # print("weight:", weight,"weight shape:", weight.size())
+            # print("weight min:", weight.min(), " weight max:", weight.max())
             eps_grad = torch.autograd.grad(meta_val_loss, weight)[ # weight의 gradient를 구하는것. 
                 0                                                  # 양의 gradient는 해당 픽셀의 weight를 증가시켜야 손실이 감소됨.
             ].detach()  # Gradient                                 # 음의 gradient는 해당 픽셀의 weight를 감소시켜야 손실이 감소됨.
             self.check_nan(eps_grad, "eps_grad")  # NaN 체크
+            # print("eps_grad:", eps_grad)
+        # print(f"eps_grad min: {eps_grad.min().item()}, max: {eps_grad.max().item()}")
+        # print(f"Number of negative values in eps_grad: {(eps_grad < 0).sum().item()}")
 
         w_tilde = torch.clamp(-eps_grad, min=0) # 음수시켜서 0이하값은 0이 되도록
+
+        # print(f"w_tilde min: {w_tilde.min().item()}, max: {w_tilde.max().item()}")
+        # print(f"Number of zero values in w_tilde: {(w_tilde == 0).sum().item()}")
+
         self.check_nan(w_tilde, "w_tilde")  # NaN 체크
         l1_norm = torch.sum(w_tilde)
         self.check_nan(l1_norm, "l1_norm")  # NaN 체크
@@ -268,6 +287,8 @@ class PixelGANModule(BaseModule):
         ):
             self.check_model_weights(meta_model, "meta_model_B")
             fake_a = meta_model(real_b)
+            # for name, param in meta_model.named_parameters():
+            #     print(f"{name}: min={param.min().item()}, max={param.max().item()}")
             self.check_nan(fake_a, "fake_a after meta_model(real_b)")  # NaN 체크
 
             # Register the fake_a to real_a
@@ -297,6 +318,7 @@ class PixelGANModule(BaseModule):
             meta_val_loss = self.criterionL1(
                 (meta_real_a + 1) * mask, (meta_model(meta_real_b) + 1) * mask
             )
+            # print(f"meta_val_loss min: {meta_val_loss.min().item()}, max: {meta_val_loss.max().item()}")
             self.check_nan(meta_val_loss, "meta_val_loss")  # NaN 체크
 
             meta_val_loss = torch.mean(meta_val_loss)
@@ -305,7 +327,15 @@ class PixelGANModule(BaseModule):
             eps_grad = torch.autograd.grad(meta_val_loss, weight)[0].detach()
             self.check_nan(eps_grad, "eps_grad")  # NaN 체크
 
-        w_tilde = torch.clamp(-eps_grad, min=0)  # 음수시켜서 0이하 값은 0이 되도록
+        # print(f"eps_grad min: {eps_grad.min().item()}, max: {eps_grad.max().item()}")
+        # print(f"Number of negative values in eps_grad: {(eps_grad < 0).sum().item()}")
+
+        w_tilde = torch.clamp(-eps_grad, min=0) # 음수시켜서 0이하값은 0이 되도록
+
+        # print(f"w_tilde min: {w_tilde.min().item()}, max: {w_tilde.max().item()}")
+        # print(f"Number of zero values in w_tilde: {(w_tilde == 0).sum().item()}")
+
+        # w_tilde = torch.clamp(-eps_grad, min=0)  # 음수시켜서 0이하 값은 0이 되도록
         self.check_nan(w_tilde, "w_tilde")  # NaN 체크
 
         l1_norm = torch.sum(w_tilde)
@@ -315,7 +345,7 @@ class PixelGANModule(BaseModule):
             w_b = w_tilde / l1_norm
         else:
             w_b = w_tilde + 0.1 / l1_norm
-
+        
         # scaling:
         if self.params.flag_meta_use_spatial:
             w_b = w_b * real_b.size(0) * real_b.size(2) * real_b.size(3)
@@ -347,7 +377,7 @@ class PixelGANModule(BaseModule):
                 meta_msk.to(device=self.device),
             )
 
-            self.print_meta_data_ranges(meta_real_a, meta_real_b, meta_msk)
+            # self.print_meta_data_ranges(meta_real_a, meta_real_b, meta_msk)
             ########################################################
             # Meta-learning type: LRE
             if self.params.flag_use_mask:

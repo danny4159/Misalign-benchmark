@@ -78,6 +78,11 @@ class PixelGANModule(BaseModule):
         if torch.isnan(loss).any():
             raise RuntimeError(f"NaN detected in {loss_name}!")
     
+    def print_meta_data_ranges(self, meta_real_a, meta_real_b, meta_msk):
+        print(f"meta_real_a: Min = {meta_real_a.min().item()}, Max = {meta_real_a.max().item()}, "
+          f"meta_real_b: Min = {meta_real_b.min().item()}, Max = {meta_real_b.max().item()}, "
+          f"meta_msk: Min = {meta_msk.min().item()}, Max = {meta_msk.max().item()}")
+    
     def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_l1, lambda_vgg, weight_a=None, weight_b=None):
         loss_G = torch.zeros(1, device=self.device, requires_grad=True)
 
@@ -162,6 +167,15 @@ class PixelGANModule(BaseModule):
 
         return loss_G
     
+    def check_model_weights(self, model, model_name="Model"):
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                if torch.isnan(param).any():
+                    raise RuntimeError(f"NaN detected in {model_name} parameter: {name}")
+                if torch.isinf(param).any():
+                    raise RuntimeError(f"Inf detected in {model_name} parameter: {name}")
+                print(f"{model_name} parameter: {name} - Min: {param.min().item()}, Max: {param.max().item()}")
+
     def determine_weight_LRE_For_A(self, real_a, real_b, meta_real_a, meta_real_b, mask=None):
         """
         weight: output과 label간에 loss를 통해 어느 pixel에 weight를 더 줄지 학습해
@@ -171,10 +185,16 @@ class PixelGANModule(BaseModule):
         else:
             mask = 1.0
 
+        # Check weights of the original model
+        self.check_model_weights(self.netG_A, "netG_A")
+
         with higher.innerloop_ctx(self.netG_A, self.optimizer_G_A) as (
             meta_model,
             meta_opt,
         ):
+        
+            self.check_model_weights(meta_model, "meta_model_A")
+
             fake_b = meta_model(real_a)
             self.check_nan(fake_b, "fake_b after meta_model(real_a)")  # NaN 체크
 
@@ -239,10 +259,14 @@ class PixelGANModule(BaseModule):
         else:
             mask = 1.0
 
+        # Check weights of the meta model
+        self.check_model_weights(self.netG_B, "netG_B")
+
         with higher.innerloop_ctx(self.netG_B, self.optimizer_G_B) as (
             meta_model,
             meta_opt,
         ):
+            self.check_model_weights(meta_model, "meta_model_B")
             fake_a = meta_model(real_b)
             self.check_nan(fake_a, "fake_a after meta_model(real_b)")  # NaN 체크
 
@@ -322,6 +346,8 @@ class PixelGANModule(BaseModule):
                 meta_real_b.to(device=self.device),
                 meta_msk.to(device=self.device),
             )
+
+            self.print_meta_data_ranges(meta_real_a, meta_real_b, meta_msk)
             ########################################################
             # Meta-learning type: LRE
             if self.params.flag_use_mask:

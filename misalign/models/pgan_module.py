@@ -74,6 +74,10 @@ class PixelGANModule(BaseModule):
         else:
             log.info("Not using meta-learning")
 
+    def check_nan(self, loss, loss_name):
+        if torch.isnan(loss).any():
+            raise RuntimeError(f"NaN detected in {loss_name}!")
+    
     def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_l1, lambda_vgg, weight_a=None, weight_b=None):
         loss_G = torch.zeros(1, device=self.device, requires_grad=True)
 
@@ -91,9 +95,13 @@ class PixelGANModule(BaseModule):
         # GAN loss D_A(G_A(A))
         pred_fake_b = self.netD_A(fake_b)
         loss_G_A = self.criterionGAN(pred_fake_b, True)
+        self.check_nan(loss_G_A, "GAN Loss A")
+
 
         pred_fake_a = self.netD_B(fake_a)
         loss_G_B = self.criterionGAN(pred_fake_a, True)
+        self.check_nan(loss_G_B, "GAN Loss B")
+
 
         if weight_a is not None:
             loss_G_A = torch.mean(loss_G_A * weight_batch_a)
@@ -118,12 +126,14 @@ class PixelGANModule(BaseModule):
             loss_L1_A = torch.mean(loss_L1_A * weight_spatial_b)
         else:
             loss_L1_A = torch.mean(loss_L1_A)
+        self.check_nan(loss_L1_A, "L1 Loss A")
 
         loss_L1_B = self.criterionL1(fake_b, real_b) * lambda_l1
         if weight_a is not None:
             loss_L1_B = torch.mean(loss_L1_B * weight_spatial_a)
         else:
             loss_L1_B = torch.mean(loss_L1_B)
+        self.check_nan(loss_L1_B, "L1 Loss B") 
 
         loss_L1 = (loss_L1_A + loss_L1_B) * 0.5
         loss_G =+ loss_L1
@@ -136,6 +146,7 @@ class PixelGANModule(BaseModule):
             VGG_loss_A = torch.mean(VGG_loss_A * weight_spatial_b)
         else:
             VGG_loss_A = torch.mean(VGG_loss_A)
+        self.check_nan(VGG_loss_A, "VGG Loss A")
 
         VGG_real_B = self.vgg(real_b.expand([int(real_b.size()[0]),3,int(real_b.size()[2]),int(real_b.size()[3])]))[0]
         VGG_fake_B = self.vgg(fake_b.expand([int(real_b.size()[0]),3,int(real_b.size()[2]),int(real_b.size()[3])]))[0]
@@ -144,6 +155,7 @@ class PixelGANModule(BaseModule):
             VGG_loss_B = torch.mean(VGG_loss_B * weight_spatial_a)
         else:
             VGG_loss_B = torch.mean(VGG_loss_B)
+        self.check_nan(VGG_loss_B, "VGG Loss B") 
 
         VGG_loss = (VGG_loss_A + VGG_loss_B) * 0.5
         loss_G =+ VGG_loss
@@ -164,10 +176,15 @@ class PixelGANModule(BaseModule):
             meta_opt,
         ):
             fake_b = meta_model(real_a)
+            self.check_nan(fake_b, "fake_b after meta_model(real_a)")  # NaN 체크
+
             # Register the fake_b to real_b
             if self.params.flag_register:
                 Trans_A = self.netR(fake_b, real_b)
                 fake_b = self.spatial_transform(fake_b, Trans_A)
+                self.check_nan(Trans_A, "Trans_A")  # NaN 체크
+                self.check_nan(fake_b, "fake_b after spatial_transform")  # NaN 체크
+
             if self.params.flag_meta_use_spatial:
                 weight = torch.zeros(
                     real_a.size(), device=self.device, requires_grad=True # 0으로 초기화는 하지만 학습 가능한 매개변수
@@ -178,20 +195,26 @@ class PixelGANModule(BaseModule):
                 )
 
             _loss = self.criterionL1(real_b, fake_b)
+            self.check_nan(_loss, "L1 Loss between real_b and fake_b")  # NaN 체크
             loss = torch.mean(_loss * weight) # weight가 어떻게 변해야 meta_model의 loss가 더 줄어드는지 meta_model의 파라미터를 학습하는것 ?
+            self.check_nan(loss, "Weighted loss")  # NaN 체크
             meta_opt.step(loss)
 
             meta_val_loss = self.criterionL1(
                 (meta_real_b + 1) * mask, (meta_model(meta_real_a) + 1) * mask
             )
+            self.check_nan(meta_val_loss, "meta_val_loss")  # NaN 체크
             meta_val_loss = torch.mean(meta_val_loss)
-
+            self.check_nan(meta_val_loss, "Mean meta_val_loss")  # NaN 체크
             eps_grad = torch.autograd.grad(meta_val_loss, weight)[ # weight의 gradient를 구하는것. 
                 0                                                  # 양의 gradient는 해당 픽셀의 weight를 증가시켜야 손실이 감소됨.
             ].detach()  # Gradient                                 # 음의 gradient는 해당 픽셀의 weight를 감소시켜야 손실이 감소됨.
+            self.check_nan(eps_grad, "eps_grad")  # NaN 체크
 
         w_tilde = torch.clamp(-eps_grad, min=0) # 음수시켜서 0이하값은 0이 되도록
+        self.check_nan(w_tilde, "w_tilde")  # NaN 체크
         l1_norm = torch.sum(w_tilde)
+        self.check_nan(l1_norm, "l1_norm")  # NaN 체크
         if l1_norm != 0:
             w_b = w_tilde / l1_norm
         else:
@@ -202,6 +225,7 @@ class PixelGANModule(BaseModule):
             w_b = w_b * real_a.size(0) * real_a.size(2) * real_a.size(3)
         else:
             w_b = w_b * real_a.size(0)
+        self.check_nan(w_b, "Final w_b")  # NaN 체크
 
         w_b = w_b.detach()  # w_a is the weight for a
         return w_b
@@ -211,7 +235,7 @@ class PixelGANModule(BaseModule):
         weight: output과 label간에 loss를 통해 어느 pixel에 weight를 더 줄지 학습해
         """
         if mask is not None:
-            mask = mask.float() # Meta mask 그냥 Mask있으면 Mask 씌우는거 학습은 없어
+            mask = mask.float()  # Meta mask가 있으면 mask 적용
         else:
             mask = 1.0
 
@@ -220,13 +244,18 @@ class PixelGANModule(BaseModule):
             meta_opt,
         ):
             fake_a = meta_model(real_b)
-            # Register the fake_b to real_b
+            self.check_nan(fake_a, "fake_a after meta_model(real_b)")  # NaN 체크
+
+            # Register the fake_a to real_a
             if self.params.flag_register:
                 Trans_B = self.netR(fake_a, real_a)
+                self.check_nan(Trans_B, "Trans_B")  # NaN 체크
                 fake_a = self.spatial_transform(fake_a, Trans_B)
+                self.check_nan(fake_a, "fake_a after spatial_transform")  # NaN 체크
+
             if self.params.flag_meta_use_spatial:
                 weight = torch.zeros(
-                    real_b.size(), device=self.device, requires_grad=True # 0으로 초기화는 하지만 학습 가능한 매개변수
+                    real_b.size(), device=self.device, requires_grad=True  # 0으로 초기화된 학습 가능한 매개변수
                 )
             else:
                 weight = torch.zeros(
@@ -234,20 +263,30 @@ class PixelGANModule(BaseModule):
                 )
 
             _loss = self.criterionL1(real_a, fake_a)
-            loss = torch.mean(_loss * weight) # weight가 어떻게 변해야 meta_model의 loss가 더 줄어드는지 meta_model의 파라미터를 학습하는것 ?
+            self.check_nan(_loss, "L1 Loss between real_a and fake_a")  # NaN 체크
+
+            loss = torch.mean(_loss * weight)  # weight가 어떻게 변해야 meta_model의 loss가 더 줄어드는지 meta_model의 파라미터를 학습하는 것
+            self.check_nan(loss, "Weighted loss")  # NaN 체크
+
             meta_opt.step(loss)
 
             meta_val_loss = self.criterionL1(
                 (meta_real_a + 1) * mask, (meta_model(meta_real_b) + 1) * mask
             )
+            self.check_nan(meta_val_loss, "meta_val_loss")  # NaN 체크
+
             meta_val_loss = torch.mean(meta_val_loss)
+            self.check_nan(meta_val_loss, "Mean meta_val_loss")  # NaN 체크
 
-            eps_grad = torch.autograd.grad(meta_val_loss, weight)[ # weight의 gradient를 구하는것. 
-                0                                                  # 양의 gradient는 해당 픽셀의 weight를 증가시켜야 손실이 감소됨.
-            ].detach()  # Gradient                                 # 음의 gradient는 해당 픽셀의 weight를 감소시켜야 손실이 감소됨.
+            eps_grad = torch.autograd.grad(meta_val_loss, weight)[0].detach()
+            self.check_nan(eps_grad, "eps_grad")  # NaN 체크
 
-        w_tilde = torch.clamp(-eps_grad, min=0) # 음수시켜서 0이하값은 0이 되도록
+        w_tilde = torch.clamp(-eps_grad, min=0)  # 음수시켜서 0이하 값은 0이 되도록
+        self.check_nan(w_tilde, "w_tilde")  # NaN 체크
+
         l1_norm = torch.sum(w_tilde)
+        self.check_nan(l1_norm, "l1_norm")  # NaN 체크
+
         if l1_norm != 0:
             w_b = w_tilde / l1_norm
         else:
@@ -258,6 +297,8 @@ class PixelGANModule(BaseModule):
             w_b = w_b * real_b.size(0) * real_b.size(2) * real_b.size(3)
         else:
             w_b = w_b * real_b.size(0)
+
+        self.check_nan(w_b, "Final w_b")  # NaN 체크
 
         w_b = w_b.detach()  # w_a is the weight for a
         return w_b

@@ -46,6 +46,9 @@ class BaseModule_A_to_B(LightningModule):  # single direction
     def model_step(self, batch: Any):
         real_a, real_b = batch
         fake_b = self.forward(real_a)
+        if real_a.shape[1] == 3:
+            real_a = real_a[:, 1:2, :, :]  # Select the middle channel, shape becomes [1, 1, 256, 256]
+            real_b = real_b[:, 1:2, :, :]
         return real_a, real_b, fake_b
 
     def on_train_start(self):

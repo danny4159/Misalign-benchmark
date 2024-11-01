@@ -10,7 +10,7 @@ deform_prob: 0
 # TODO: 데이터셋 수정
 train_file: 'prepared_data_0_0_0_0_0_ver3_final.h5' # epi_mprage.h5 # prepared_data_0_0_0_0_0_ver3_final.h5
 val_file: 'prepared_data_0_0_0_0_0_ver3_final.h5'
-test_file: 'prepared_data_0_0_0_0_0_ver3_final.h5'
+test_file: 'prepared_data_0.0_0.0_0.0_0.0_0.0.h5'
 
 reverse: False # New
 flip_prob: 0.0
@@ -19,5 +19,6 @@ rand_crop: True #False
 batch_size: 4 # 12
 num_workers: 1 #3
 pin_memory: False
+adjacent_slices: False
 
 half_val_test: False

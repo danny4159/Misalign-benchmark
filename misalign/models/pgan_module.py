@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from misalign.models.components.contextual_loss import (
     Contextual_Loss,
 )  # this is the CX loss
+from pytorch_msssim import ssim
 
 
 import higher
@@ -56,6 +57,8 @@ class PixelGANModule(BaseModule):
         self.no_lsgan = False
         self.criterionGAN = GANLoss(use_lsgan=not self.no_lsgan)
         self.criterionL1 = torch.nn.L1Loss(reduction="none")
+        self.criterionL2 = torch.nn.MSELoss(reduction="none")  # L2 Loss 정의
+        self.criterionSSIM = ssim  # SSIM Loss 정의
 
         style_feat_layers = {"conv_2_2": 1.0, "conv_3_2": 1.0, "conv_4_2": 1.0}
         if self.params.lambda_style != 0:
@@ -91,7 +94,7 @@ class PixelGANModule(BaseModule):
           f"meta_real_b: Min = {meta_real_b.min().item()}, Max = {meta_real_b.max().item()}, "
           f"meta_msk: Min = {meta_msk.min().item()}, Max = {meta_msk.max().item()}")
     
-    def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_l1, lambda_vgg, lambda_style, weight_a=None, weight_b=None):
+    def backward_G(self, real_a, real_b, fake_a, fake_b, lambda_l1, lambda_vgg, lambda_style, lambda_l2, lambda_ssim, weight_a=None, weight_b=None):
         loss_G = torch.zeros(1, device=self.device, requires_grad=True)
 
         if weight_a is not None:
@@ -196,6 +199,34 @@ class PixelGANModule(BaseModule):
             self.log("loss_Style", Style_loss.detach(), prog_bar=True)
             loss_G = loss_G + Style_loss
             
+        
+        if self.params.lambda_l2 != 0:
+            loss_L2_A = self.criterionL2(fake_a, real_a) * lambda_l2
+            loss_L2_A = torch.mean(loss_L2_A * weight_spatial_b) if weight_b is not None else torch.mean(loss_L2_A)
+            self.check_nan(loss_L2_A, "L2 Loss A")
+            
+            loss_L2_B = self.criterionL2(fake_b, real_b) * lambda_l2
+            loss_L2_B = torch.mean(loss_L2_B * weight_spatial_a) if weight_a is not None else torch.mean(loss_L2_B)
+            self.check_nan(loss_L2_B, "L2 Loss B")
+            
+            loss_L2 = (loss_L2_A + loss_L2_B) * 0.5
+            self.log("loss_L2", loss_L2.detach(), prog_bar=True)
+            loss_G = loss_G + loss_L2
+
+        # SSIM Loss
+        if self.params.lambda_ssim != 0:
+            loss_SSIM_A = (1 - self.criterionSSIM(fake_a, real_a)) * lambda_ssim  # SSIM의 값이 높을수록 유사하므로 1에서 뺌
+            loss_SSIM_A = torch.mean(loss_SSIM_A * weight_spatial_b) if weight_b is not None else torch.mean(loss_SSIM_A)
+            self.check_nan(loss_SSIM_A, "SSIM Loss A")
+
+            loss_SSIM_B = (1 - self.criterionSSIM(fake_b, real_b)) * lambda_ssim
+            loss_SSIM_B = torch.mean(loss_SSIM_B * weight_spatial_a) if weight_a is not None else torch.mean(loss_SSIM_B)
+            self.check_nan(loss_SSIM_B, "SSIM Loss B")
+
+            loss_SSIM = (loss_SSIM_A + loss_SSIM_B) * 0.5
+            self.log("loss_SSIM", loss_SSIM.detach(), prog_bar=True)
+            loss_G = loss_G + loss_SSIM
+
         return loss_G
     
     def check_model_weights(self, model, model_name="Model"):
@@ -431,7 +462,7 @@ class PixelGANModule(BaseModule):
 
         with optimizer_G.toggle_model():
             real_a, real_b, fake_a, fake_b = self.model_step(batch)
-            loss_G = self.backward_G(real_a, real_b, fake_a, fake_b, self.params.lambda_l1, self.params.lambda_vgg, self.params.lambda_style, weight_a=w_a, weight_b=w_b)
+            loss_G = self.backward_G(real_a, real_b, fake_a, fake_b, self.params.lambda_l1, self.params.lambda_vgg, self.params.lambda_style, self.params.lambda_l2, self.params.lambda_ssim, weight_a=w_a, weight_b=w_b)
             self.manual_backward(loss_G)
             self.clip_gradients(optimizer_G, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
             optimizer_G.step()

@@ -48,6 +48,8 @@ params: # Other params
   lambda_l1: 20
   lambda_vgg: 20
   lambda_style: 0
+  lambda_l2: 0
+  lambda_ssim: 0
   flag_meta_learning: False
   dir_meta_learning: ${paths.root_dir}/data/IXI/val/prepared_data_0.0_0.0_0.0_0.0_0.0.h5
   reverse: ${data.reverse}

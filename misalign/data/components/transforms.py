@@ -51,7 +51,7 @@ def padding_target_size(tensorA, tensorB, min_size=(256,256), pad_value=-1): # T
 
     return tensorA, tensorB
 
-def random_crop(tensorA, tensorB, output_size=(128,128)):
+def random_crop(tensorA, tensorB, output_size=(128,128), adjacent_slices=False):
     """
     Crop randomly the image in a sample.
 
@@ -71,19 +71,25 @@ def random_crop(tensorA, tensorB, output_size=(128,128)):
     assert len(tensorA.shape) == 3, 'Input tensor A must have 3 dimensions (C, H, W)'
     assert len(tensorB.shape) == 3, 'Input tensor B must have 3 dimensions (C, H, W)'
 
-    _, h, w = tensorA.shape
+    slice, h, w = tensorA.shape
     
     # Calculate the top left corner of the random crop
+
     top = torch.randint(0, h - output_size[0] + 1, size=(1,)).item() if h > output_size[0] else 0
     left = torch.randint(0, w - output_size[1] + 1, size=(1,)).item() if w > output_size[1] else 0
     # top = torch.randint(0, h - output_size[0] + 1, size=(1,)).item()
     # left = torch.randint(0, w - output_size[1] + 1, size=(1,)).item()
-
-    # Perform the crop
-    tensorA = F.crop(tensorA, top, left, output_size[0], output_size[1])
-    tensorB = F.crop(tensorB, top, left, output_size[0], output_size[1])
     
-    
+    if adjacent_slices:  # Apply the same crop to each slice
+        cropped_slices_A = [F.crop(tensorA[i], top, left, output_size[0], output_size[1]) for i in range(slice)]
+        cropped_slices_B = [F.crop(tensorB[i], top, left, output_size[0], output_size[1]) for i in range(slice)]
+        tensorA = torch.stack(cropped_slices_A)  # Stack back to shape (slice_count, output_size[0], output_size[1])
+        tensorB = torch.stack(cropped_slices_B)
+    else:
+        # Perform the crop
+        tensorA = F.crop(tensorA, top, left, output_size[0], output_size[1])
+        tensorB = F.crop(tensorB, top, left, output_size[0], output_size[1])
+        
     return tensorA, tensorB
 
 def even_crop(tensorA, tensorB, target_size):
@@ -339,7 +345,7 @@ def download_process_IXI(data_dir: str,
 
 
 class dataset_IXI(Dataset):
-    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False, *args, **kwargs):
+    def __init__(self, data_dir: str, flip_prob: float = 0.5, rot_prob: float = 0.5, rand_crop: bool = False, reverse=False, adjacent_slices: bool = False, *args, **kwargs):
         """Initializes the IXI dataset for loading during model training/testing.
 
         Args:
@@ -356,6 +362,8 @@ class dataset_IXI(Dataset):
             ]
         )
         self.reverse = reverse
+        self.adjacent_slices = adjacent_slices
+        self.slices_per_patient = 91  # 각 환자당 91개의 슬라이스가 있다고 가정
 
     def __len__(self):
         """Returns the number of samples in the dataset."""
@@ -375,17 +383,38 @@ class dataset_IXI(Dataset):
         """
         os.environ["HDF5_USE_FILE_LOCKING"] = "TRUE"
         with h5py.File(self.data_dir, "r") as hr:
-            A = np.array(hr["data_A"][idx])
+
+            A = np.array(hr["data_A"][idx]) # (256,256)
             B = np.array(hr["data_B"][idx])
-            A = np.float32(A)
-            B = np.float32(B)
-        A = torch.from_numpy(A[None]).clone()
-        B = torch.from_numpy(B[None]).clone()
+
+            if self.adjacent_slices:
+                patient_idx = idx // self.slices_per_patient
+                slice_idx_within_patient = idx % self.slices_per_patient
+                patient_start = patient_idx * self.slices_per_patient
+                patient_end = patient_start + self.slices_per_patient - 1
+                idx_prev = max(patient_start, idx - 1)  # 이전 슬라이스 (경계 조건 처리)
+                idx_next = min(patient_end, idx + 1)    # 다음 슬라이스 (경계 조건 처리)
+
+                A_prev = np.array(hr["data_A"][idx_prev])
+                A_next = np.array(hr["data_A"][idx_next])
+                B_prev = np.array(hr["data_B"][idx_prev])
+                B_next = np.array(hr["data_B"][idx_next])
+                
+                # Convert to torch and add channel dimension
+                A = torch.from_numpy(np.stack([A_prev, A, A_next])) # (3,256,256)
+                B = torch.from_numpy(np.stack([B_prev, B, B_next]))           
+            else:
+                A = torch.from_numpy(A[None]).clone() # (1,256,256)
+                B = torch.from_numpy(B[None]).clone()
+
+        A = np.float32(A)
+        B = np.float32(B)
         # Create a dictionary for the data
         data_dict = {"A": A, "B": B}
 
         # Apply the random flipping
-        data_dict = self.aug_func(data_dict)
+        if self.adjacent_slices is False:
+            data_dict = self.aug_func(data_dict)
 
         A = data_dict["A"]
         A = convert_to_tensor(A)
@@ -393,7 +422,7 @@ class dataset_IXI(Dataset):
         B = convert_to_tensor(B)
 
         if self.rand_crop:
-            A, B = random_crop(A, B, (128,128))
+            A, B = random_crop(A, B, (128,128), adjacent_slices=self.adjacent_slices) # (1,128,128) or (3,128,128) # only trainset
         if self.reverse:
             return B, A
         else:
